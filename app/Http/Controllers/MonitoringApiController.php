@@ -1,0 +1,113 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class MonitoringApiController extends Controller
+{
+    public function devices()
+    {
+        $devices = DB::table('snmp_devices')
+            ->select(['id', 'device_name'])
+            ->where('is_active', 1)
+            ->orderBy('device_name')
+            ->get();
+
+        return response()->json($devices);
+    }
+
+    public function interfaces(Request $request)
+    {
+        $deviceId = (int) $request->query('device_id', 0);
+        if ($deviceId <= 0) {
+            return response()->json([]);
+        }
+
+        $rows = DB::table('interfaces')
+            ->select(['if_index', 'if_name', 'if_alias', 'tx_power', 'rx_power'])
+            ->where('device_id', $deviceId)
+            ->where('is_sfp', 1)
+            ->orderBy('if_index')
+            ->get();
+
+        return response()->json($rows);
+    }
+
+    public function chart(Request $request)
+    {
+        $deviceId = (int) $request->query('device_id', 0);
+        $ifIndex = (int) $request->query('if_index', 0);
+        $range = $request->query('range', '1h');
+
+        $interval = match ($range) {
+            '1h' => '1 HOUR',
+            '1d' => '24 HOUR',
+            '3d' => '72 HOUR',
+            '7d' => '7 DAY',
+            '30d' => '30 DAY',
+            '1y' => '1 YEAR',
+            default => '1 HOUR',
+        };
+
+        $sql = str_contains($interval, 'YEAR') || str_contains($interval, 'DAY')
+            ? "SELECT created_at, tx_power, rx_power, loss
+               FROM interface_stats
+               WHERE device_id = ? AND if_index = ?
+                 AND created_at >= DATE_SUB(NOW(), INTERVAL $interval)
+               ORDER BY created_at ASC"
+            : "SELECT created_at, tx_power, rx_power, loss
+               FROM interface_stats
+               WHERE device_id = ? AND if_index = ?
+                 AND created_at >= NOW() - INTERVAL $interval
+               ORDER BY created_at ASC";
+
+        $rows = DB::select($sql, [$deviceId, $ifIndex]);
+
+        $defaultDownRx = -40.00;
+        $data = [];
+
+        foreach ($rows as $row) {
+            $rx = $row->rx_power;
+            $tx = $row->tx_power;
+
+            if ($rx === null || $rx === '') {
+                $rx = $defaultDownRx;
+            } else {
+                $rx = (float) $rx;
+            }
+
+            if ($tx !== null && $tx !== '') {
+                $tx = (float) $tx;
+            } else {
+                $tx = null;
+            }
+
+            $loss = ($tx !== null && $rx !== null) ? $tx - $rx : null;
+
+            $data[] = [
+                'created_at' => $row->created_at,
+                'tx_power' => $tx,
+                'rx_power' => $rx,
+                'loss' => $loss,
+            ];
+        }
+
+        if (empty($data)) {
+            $now = time();
+            for ($i = 0; $i < 12; $i++) {
+                $time = date('Y-m-d H:i:s', $now - ($i * 300));
+                $data[] = [
+                    'created_at' => $time,
+                    'tx_power' => null,
+                    'rx_power' => $defaultDownRx,
+                    'loss' => null,
+                ];
+            }
+            usort($data, fn ($a, $b) => strtotime($a['created_at']) <=> strtotime($b['created_at']));
+        }
+
+        return response()->json($data);
+    }
+}

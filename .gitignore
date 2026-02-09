@@ -1,0 +1,44 @@
+# Laravel / PHP
+/vendor/
+/storage/*
+!/storage/.gitignore
+/bootstrap/cache/*
+
+# Local config + generated data
+/config/olt.php
+/storage/app/olt/
+
+# Environment files (keep example)
+.env
+.env.*
+!.env.example
+
+# Frontend build artifacts
+/node_modules/
+/public/build/
+/public/hot
+/public/storage
+
+# Test / tooling caches
+/.phpunit.cache
+.phpunit.result.cache
+.phpactor.json
+
+# Composer auth (private tokens)
+/auth.json
+
+# Homestead
+Homestead.json
+Homestead.yaml
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+
+# IDEs
+/.fleet/
+/.idea/
+/.nova/
+/.vscode/
+/.zed/
+.DS_Store
