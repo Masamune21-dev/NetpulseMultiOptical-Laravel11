@@ -171,5 +171,8 @@ Enable `mod_rewrite`, then use:
 - Routes use clean endpoints without `.php`.
 
 ## License
-Internal project. If you plan to open‑source, update the license section.
-# NetpulseMultiOptical-Laravel11
+
+This project is licensed under CC BY-NC 4.0.
+Commercial use is prohibited without permission.
+
+
