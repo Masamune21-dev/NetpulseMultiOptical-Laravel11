@@ -9,7 +9,7 @@
                     <i class="fas fa-lock-open"></i> Unlocked
                 </button>
                 <button class="btn btn-outline" onclick="openAddLinkModal()">
-                    <i class="fas fa-link"></i> Add Connection
+                    <i class="fas fa-link"></i> Connection
                 </button>
                 <button class="btn btn-outline" id="lineEditBtn">
                     <i class="fas fa-bezier-curve"></i> Edit Lines
@@ -257,14 +257,36 @@
 
 @endsection
 
-@push('styles')
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        .map-container {
-            position: relative;
-            height: calc(100vh - 350px);
-            width: 100%;
-            min-height: 500px;
+    @push('styles')
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <style>
+            @media (max-width: 768px) {
+                /* Map topbar: make action buttons a 3-column grid on phones. */
+                .topbar .topbar-content {
+                    flex-direction: column;
+                    align-items: stretch;
+                    gap: 10px;
+                }
+
+                .topbar .topbar-actions {
+                    width: 100%;
+                    display: grid;
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                    gap: 8px;
+                }
+
+                .topbar .topbar-actions .btn {
+                    width: 100%;
+                    justify-content: center;
+                    white-space: nowrap;
+                }
+            }
+
+            .map-container {
+                position: relative;
+                height: calc(100vh - 350px);
+                width: 100%;
+                min-height: 500px;
             background: var(--bg-secondary);
         }
 

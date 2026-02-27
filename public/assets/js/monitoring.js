@@ -5,6 +5,7 @@ let autoRefreshPaused = false;
 
 const deviceSelect = document.getElementById('deviceSelect');
 const interfaceSelect = document.getElementById('interfaceSelect');
+const rangeSelectMobile = document.getElementById('rangeSelectMobile');
 
 /* ======================================================
    INIT
@@ -15,13 +16,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.btn-range').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.btn-range')
-                .forEach(b => b.classList.remove('active'));
-
-            btn.classList.add('active');
-            setRange(btn.dataset.range);
+            setRangeUI(btn.dataset.range);
         });
     });
+
+    if (rangeSelectMobile) {
+        rangeSelectMobile.value = currentRange;
+        rangeSelectMobile.addEventListener('change', () => {
+            setRangeUI(rangeSelectMobile.value);
+        });
+    }
 });
 
 /* ======================================================
@@ -128,6 +132,24 @@ document.addEventListener('visibilitychange', () => {
 ====================================================== */
 function setRange(r) {
     currentRange = r;
+    loadChart();
+    startAutoRefresh();
+}
+
+function setRangeUI(r) {
+    currentRange = r;
+
+    // Sync buttons
+    document.querySelectorAll('.btn-range')
+        .forEach(b => b.classList.remove('active'));
+    const activeBtn = document.querySelector(`.btn-range[data-range="${CSS.escape(r)}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    // Sync mobile dropdown
+    if (rangeSelectMobile) {
+        rangeSelectMobile.value = r;
+    }
+
     loadChart();
     startAutoRefresh();
 }

@@ -49,8 +49,8 @@ function openTab(id) {
 // SNMP DEVICE LIST
 // ===============================
 function loadDevices() {
-    fetch('api/devices')
-        .then(r => r.json())
+    fetch('/api/devices')
+        .then(r => r.ok ? r.json() : Promise.reject(r))
         .then(data => {
             const tb = document.querySelector('#deviceTable tbody');
             tb.innerHTML = '';
@@ -78,6 +78,9 @@ function loadDevices() {
                     </td>
                 </tr>`;
             });
+        })
+        .catch(() => {
+            showNotification('Gagal memuat device', 'error');
         });
 }
 
@@ -111,7 +114,7 @@ function editDevice(d) {
 // ===============================
 function saveDevice() {
     if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
-    fetch('api/devices', {
+    fetch('/api/devices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -123,20 +126,34 @@ function saveDevice() {
             snmp_user: snmp_user.value,
             is_active: is_active.value
         })
-    }).then(() => {
-        closeModal();
-        loadDevices();
-        loadMonitoringDevices();
-    });
+    })
+        .then(r => r.ok ? r.json() : Promise.reject(r))
+        .then(() => {
+            closeModal();
+            loadDevices();
+            loadMonitoringDevices();
+        })
+        .catch(() => {
+            showNotification('Gagal menyimpan device', 'error');
+        });
 }
 
 function deleteDevice(id) {
     if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
     confirmDelete('Hapus device ini?', () => {
-        fetch('api/devices?id=' + id, { method: 'DELETE' })
-            .then(() => {
+        fetch('/api/devices?id=' + id, { method: 'DELETE' })
+            .then(r => r.ok ? r.json() : Promise.reject(r))
+            .then((res) => {
+                if (res && res.success) {
+                    showNotification('Device dihapus', 'success');
+                } else {
+                    showNotification(res?.error || 'Gagal menghapus device', 'error');
+                }
                 loadDevices();
                 loadMonitoringDevices();
+            })
+            .catch(() => {
+                showNotification('Gagal menghapus device', 'error');
             });
     });
 }
@@ -145,7 +162,7 @@ function deleteDevice(id) {
 // SNMP TEST
 // ===============================
 window.testSNMP = function (id) {
-    fetch('api/devices?test=' + id)
+    fetch('/api/devices?test=' + id)
         .then(r => r.json())
         .then(d => {
             if (d.status === 'OK') {
@@ -162,8 +179,8 @@ window.testSNMP = function (id) {
 // MONITORING TAB
 // ===============================
 function loadMonitoringDevices() {
-    fetch('api/devices')
-        .then(r => r.json())
+    fetch('/api/devices')
+        .then(r => r.ok ? r.json() : Promise.reject(r))
         .then(data => {
             const sel = document.getElementById('monitorDeviceSelect');
             if (!sel) return;
@@ -178,6 +195,9 @@ function loadMonitoringDevices() {
                         </option>`;
                 }
             });
+        })
+        .catch(() => {
+            showNotification('Gagal memuat monitoring devices', 'error');
         });
 }
 

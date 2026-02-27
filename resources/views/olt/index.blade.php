@@ -1,13 +1,42 @@
 @extends('layouts.app')
 
 @section('content')
-    <style>
-        .topbar form {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
+	    <style>
+	        .olt-summary {
+	            margin-bottom: 10px;
+	            display: flex;
+	            flex-wrap: wrap;
+	            gap: 6px 10px;
+	            color: var(--text);
+	        }
+
+        .olt-summary > span::after {
+            content: "|";
+            margin-left: 10px;
+            color: var(--text-soft);
+            opacity: 0.7;
         }
+
+	        .olt-summary > span:last-child::after {
+	            content: "";
+	            margin-left: 0;
+	        }
+
+	        .signal-badge {
+	            font-weight: 700;
+	        }
+	        .signal-good { color: #16a34a; }
+	        .signal-warning { color: #f59e0b; }
+	        .signal-critical { color: #ef4444; }
+	        .signal-offline { color: #64748b; }
+	        .signal-unknown { color: #6b7280; }
+
+	        .topbar form {
+	            display: flex;
+	            align-items: center;
+	            gap: 12px;
+	            flex-wrap: wrap;
+	        }
 
         .topbar label {
             font-size: 14px;
@@ -47,6 +76,15 @@
         }
 
         @media (max-width: 768px) {
+            .olt-summary {
+                font-size: 0.78rem;
+                gap: 4px 8px;
+            }
+
+            .olt-summary > span::after {
+                margin-left: 8px;
+            }
+
             .topbar form {
                 width: 100%;
                 gap: 6px;
@@ -104,11 +142,11 @@
             No OLT configured. Please fill `config/olt.php`.
         </div>
     @else
-        <div style="margin-bottom:10px;">
-            <b>OLT:</b> {{ $olts[$oltId]['name'] ?? $oltId }} |
-            <b>PON:</b> {{ $pon }} |
-            <b>Total ONU:</b> {{ (int) ($data['total'] ?? 0) }} |
-            <b>Last Update:</b> {{ $lastUpdate }}
+        <div class="olt-summary">
+            <span><b>OLT:</b> {{ $olts[$oltId]['name'] ?? $oltId }}</span>
+            <span><b>PON:</b> {{ $pon }}</span>
+            <span><b>Total ONU:</b> {{ (int) ($data['total'] ?? 0) }}</span>
+            <span><b>Last Update:</b> {{ $lastUpdate }}</span>
         </div>
     @endif
 
@@ -144,22 +182,22 @@
                                 </td>
                                 <td>{{ $onu['rx_power'] ?? '-' }}</td>
                                 <td>{{ $onu['tx_power'] ?? '-' }}</td>
-                                <td>{{ $onu['temperature'] ?? '-' }}</td>
-                                <td>
-                                    @php
-                                        $signal = $onu['signal'] ?? '-';
-                                        $color = match ($signal) {
-                                            'good' => 'green',
-                                            'warning' => 'orange',
-                                            'critical' => 'red',
-                                            'offline' => '#64748b',
-                                            default => 'gray',
-                                        };
-                                    @endphp
-                                    <span style="color:{{ $color }}; font-weight:bold;">
-                                        {{ ucfirst($signal) }}
-                                    </span>
-                                </td>
+	                                <td>{{ $onu['temperature'] ?? '-' }}</td>
+	                                <td>
+	                                    @php
+	                                        $signal = (string) ($onu['signal'] ?? '-');
+	                                        $signalClass = match ($signal) {
+	                                            'good' => 'signal-good',
+	                                            'warning' => 'signal-warning',
+	                                            'critical' => 'signal-critical',
+	                                            'offline' => 'signal-offline',
+	                                            default => 'signal-unknown',
+	                                        };
+	                                    @endphp
+	                                    <span class="signal-badge {{ $signalClass }}">
+	                                        {{ ucfirst($signal) }}
+	                                    </span>
+	                                </td>
                                 <td>{{ $onu['uptime'] ?? '-' }}</td>
                             </tr>
                         @endforeach

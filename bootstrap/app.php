@@ -38,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'legacy.auth' => \App\Http\Middleware\EnsureAuthenticated::class,
             'legacy.role' => \App\Http\Middleware\EnsureRole::class,
+            'api.auth' => \App\Http\Middleware\AuthenticateApiToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

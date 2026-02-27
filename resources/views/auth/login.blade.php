@@ -251,18 +251,34 @@
 
         .btn-login {
             width: 100%;
-            padding: 0.95rem 1.2rem;
+            padding: 0.85rem 1.1rem;
             border-radius: 12px;
             border: none;
             background: var(--primary-gradient);
             color: white;
             font-weight: 700;
+            font-size: 0.95rem;
+            line-height: 1;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
             cursor: pointer;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .btn-login .btn-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.25em;
+            height: 1.25em;
+            line-height: 1;
+        }
+
+        .btn-login .btn-icon i {
+            display: block;
+            line-height: 1;
         }
 
         .btn-login:disabled {

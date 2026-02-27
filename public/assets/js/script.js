@@ -542,9 +542,10 @@ window.confirmDelete = function (message, onConfirm) {
     modal.style.display = 'flex';
 
     const clickHandler = () => {
+        const cb = deleteConfirmCallback;
         closeDeleteModal();
-        if (deleteConfirmCallback) {
-            deleteConfirmCallback();
+        if (cb) {
+            cb();
         }
     };
 

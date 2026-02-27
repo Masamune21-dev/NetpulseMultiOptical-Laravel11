@@ -36,16 +36,14 @@ Route::middleware(['legacy.auth'])->group(function () {
 
     Route::get('/map', [MapController::class, 'index']);
 
-    Route::get('/users', [UsersController::class, 'index'])
-        ->middleware('legacy.role:admin,technician');
+    Route::get('/users', [UsersController::class, 'index']);
 
-    Route::get('/settings', [SettingsController::class, 'index'])
-        ->middleware('legacy.role:admin,technician');
+    Route::get('/settings', [SettingsController::class, 'index']);
 
     Route::get('/olt', [OltController::class, 'index']);
 
     Route::get('/api/users', [UsersApiController::class, 'index'])
-        ->middleware('legacy.role:admin,technician');
+        ->middleware('legacy.role:admin,technician,viewer');
     Route::post('/api/users', [UsersApiController::class, 'store'])
         ->middleware('legacy.role:admin');
     Route::delete('/api/users', [UsersApiController::class, 'destroy'])
@@ -73,19 +71,19 @@ Route::middleware(['legacy.auth'])->group(function () {
     Route::get('/api/huawei_discover_optics', DiscoverInterfacesController::class);
 
     Route::match(['GET', 'POST'], '/api/settings', [SettingsApiController::class, 'settings'])
-        ->middleware('legacy.role:admin,technician');
+        ->middleware('legacy.role:admin,technician,viewer');
     Route::post('/api/telegram_test', [SettingsApiController::class, 'telegramTest'])
         ->middleware('legacy.role:admin');
     Route::get('/api/logs', [SettingsApiController::class, 'logs'])
-        ->middleware('legacy.role:admin');
+        ->middleware('legacy.role:admin,viewer');
 
     Route::get('/api/olt', [OltApiController::class, 'list'])
-        ->middleware('legacy.role:admin,technician');
+        ->middleware('legacy.role:admin,technician,viewer');
     Route::get('/api/olt_data', [OltApiController::class, 'data'])
-        ->middleware('legacy.role:admin,technician');
+        ->middleware('legacy.role:admin,technician,viewer');
 
     Route::get('/api/alert_logs', [AlertLogsApiController::class, 'index'])
-        ->middleware('legacy.role:admin,technician');
+        ->middleware('legacy.role:admin,technician,viewer');
     Route::delete('/api/alert_logs', [AlertLogsApiController::class, 'destroy'])
         ->middleware('legacy.role:admin');
 

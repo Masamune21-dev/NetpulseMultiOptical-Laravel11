@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class MonitoringApiController extends Controller
 {
-    public function devices()
+    public function devices(Request $request)
     {
+        if (ViewerDummyData::isViewer($request)) {
+            return response()->json(ViewerDummyData::monitoringDevices());
+        }
+
         $devices = DB::table('snmp_devices')
             ->select(['id', 'device_name'])
             ->where('is_active', 1)
@@ -23,6 +28,10 @@ class MonitoringApiController extends Controller
         $deviceId = (int) $request->query('device_id', 0);
         if ($deviceId <= 0) {
             return response()->json([]);
+        }
+
+        if (ViewerDummyData::isViewer($request)) {
+            return response()->json(ViewerDummyData::monitoringInterfaces($deviceId));
         }
 
         $rows = DB::table('interfaces')
@@ -40,6 +49,10 @@ class MonitoringApiController extends Controller
         $deviceId = (int) $request->query('device_id', 0);
         $ifIndex = (int) $request->query('if_index', 0);
         $range = $request->query('range', '1h');
+
+        if (ViewerDummyData::isViewer($request)) {
+            return response()->json(ViewerDummyData::interfaceChart($deviceId, $ifIndex, (string) $range));
+        }
 
         $interval = match ($range) {
             '1h' => '1 HOUR',

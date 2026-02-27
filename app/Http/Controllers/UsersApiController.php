@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -11,6 +12,11 @@ class UsersApiController extends Controller
     public function index(Request $request)
     {
         $user = $request->session()->get('auth.user');
+        if (ViewerDummyData::isViewer($request)) {
+            $currentUserId = (int) ($user['id'] ?? 0);
+            return response()->json(ViewerDummyData::users($currentUserId));
+        }
+
         if (!in_array($user['role'] ?? '', ['admin', 'technician'], true)) {
             return response()->json(['error' => 'Access denied'], 403);
         }

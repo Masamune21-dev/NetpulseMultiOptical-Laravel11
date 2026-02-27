@@ -7,6 +7,11 @@
 # Local config + generated data
 /config/olt.php
 /storage/app/olt/
+/database/*.sqlite
+
+# Mobile secrets (Flutter)
+/mobile/android/app/google-services.json
+/mobile/ios/Runner/GoogleService-Info.plist
 
 # Environment files (keep example)
 .env

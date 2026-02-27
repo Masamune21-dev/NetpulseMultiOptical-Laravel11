@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 
 class OltApiController extends Controller
@@ -10,6 +11,20 @@ class OltApiController extends Controller
     {
         $user = $request->session()->get('auth.user');
         $role = $user['role'] ?? '';
+        if ($role === 'viewer') {
+            $out = [];
+            foreach (ViewerDummyData::oltConfig() as $id => $olt) {
+                $out[] = [
+                    'id' => (string) $id,
+                    'name' => (string) ($olt['name'] ?? $id),
+                    'pons' => array_values((array) ($olt['pons'] ?? [])),
+                    'last_poll' => date('Y-m-d H:i:s'),
+                    'pon_count' => count((array) ($olt['pons'] ?? [])),
+                ];
+            }
+            return response()->json(['success' => true, 'data' => $out]);
+        }
+
         if (!in_array($role, ['admin', 'technician'], true)) {
             return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
         }
@@ -43,6 +58,26 @@ class OltApiController extends Controller
     {
         $user = $request->session()->get('auth.user');
         $role = $user['role'] ?? '';
+        if ($role === 'viewer') {
+            $oltId = (string) $request->query('olt', '');
+            $pon = (string) $request->query('pon', '');
+            $olts = ViewerDummyData::oltConfig();
+
+            if ($oltId === '' || !isset($olts[$oltId])) {
+                return response()->json(['success' => false, 'error' => 'Invalid olt'], 400);
+            }
+            $pons = (array) ($olts[$oltId]['pons'] ?? []);
+            if ($pon === '' || !in_array($pon, $pons, true)) {
+                return response()->json(['success' => false, 'error' => 'Invalid pon'], 400);
+            }
+
+            return response()->json([
+                'success' => true,
+                'last_update' => date('Y-m-d H:i:s'),
+                'data' => ViewerDummyData::oltPonData($pon),
+            ]);
+        }
+
         if (!in_array($role, ['admin', 'technician'], true)) {
             return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
         }
@@ -78,4 +113,3 @@ class OltApiController extends Controller
         ]);
     }
 }
-

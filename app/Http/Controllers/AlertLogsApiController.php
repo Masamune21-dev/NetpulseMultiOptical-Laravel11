@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -12,6 +13,11 @@ class AlertLogsApiController extends Controller
     {
         $user = $request->session()->get('auth.user');
         $role = $user['role'] ?? '';
+
+        if ($role === 'viewer') {
+            // Same response shape as real endpoint.
+            return response()->json(['success' => true, 'data' => ViewerDummyData::alertLogs()]);
+        }
 
         if (!in_array($role, ['admin', 'technician'], true)) {
             return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
@@ -90,4 +96,3 @@ class AlertLogsApiController extends Controller
         return response()->json(['success' => true]);
     }
 }
-

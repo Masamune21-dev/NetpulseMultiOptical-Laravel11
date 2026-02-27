@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -10,6 +11,14 @@ class MapApiController extends Controller
 {
     public function nodes(Request $request)
     {
+        if (ViewerDummyData::isViewer($request)) {
+            if ($request->method() !== 'GET') {
+                return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+            }
+            $with = (int) $request->query('with_interfaces', 0) === 1;
+            return response()->json(ViewerDummyData::mapNodes($with));
+        }
+
         $this->ensureMapTables();
 
         switch ($request->method()) {
@@ -28,6 +37,13 @@ class MapApiController extends Controller
 
     public function links(Request $request)
     {
+        if (ViewerDummyData::isViewer($request)) {
+            if ($request->method() !== 'GET') {
+                return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+            }
+            return response()->json(ViewerDummyData::mapLinks());
+        }
+
         $this->ensureMapTables();
 
         switch ($request->method()) {
@@ -44,6 +60,10 @@ class MapApiController extends Controller
 
     public function devices()
     {
+        if (ViewerDummyData::isViewer(request())) {
+            return response()->json(ViewerDummyData::mapDevices());
+        }
+
         $devices = DB::table('snmp_devices')
             ->select(['id', 'device_name', 'ip_address', 'last_status'])
             ->whereNotIn('id', function ($query) {

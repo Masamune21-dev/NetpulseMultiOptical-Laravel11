@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -13,6 +14,10 @@ class InterfacesApiController extends Controller
         $deviceId = (int) $request->query('device_id', 0);
         if ($deviceId <= 0) {
             return response()->json([]);
+        }
+
+        if (ViewerDummyData::isViewer($request)) {
+            return response()->json(ViewerDummyData::interfaces($deviceId));
         }
 
         $deviceExists = DB::table('snmp_devices')->where('id', $deviceId)->exists();

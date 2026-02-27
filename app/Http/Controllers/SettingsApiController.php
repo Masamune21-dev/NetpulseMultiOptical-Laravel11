@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -13,6 +14,10 @@ class SettingsApiController extends Controller
         $role = $user['role'] ?? '';
 
         if ($request->isMethod('get')) {
+            if (ViewerDummyData::isViewer($request)) {
+                return response()->json(ViewerDummyData::settings());
+            }
+
             if (!in_array($role, ['admin', 'technician'], true)) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
@@ -84,7 +89,11 @@ class SettingsApiController extends Controller
     public function logs(Request $request)
     {
         $user = $request->session()->get('auth.user');
-        if (($user['role'] ?? '') !== 'admin') {
+        $role = (string) ($user['role'] ?? '');
+        if ($role === 'viewer') {
+            return response()->json(['success' => true, 'data' => ViewerDummyData::securityLogsText()]);
+        }
+        if ($role !== 'admin') {
             return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
         }
 

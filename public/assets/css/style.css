@@ -2123,3 +2123,12 @@ body[data-role="viewer"] .action-delete {
 [data-theme="dark"] .interface-table th {
     background: rgba(30, 41, 59, 0.9);
 }
+
+/* Global mobile typography scale (make everything a bit more compact) */
+@media (max-width: 768px) {
+    html { font-size: 14px; }
+}
+
+@media (max-width: 480px) {
+    html { font-size: 13px; }
+}

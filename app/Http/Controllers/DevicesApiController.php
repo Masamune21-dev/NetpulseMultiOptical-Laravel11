@@ -2,14 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DevicesApiController extends Controller
 {
     public function index(Request $request)
     {
         $testId = (int) $request->query('test', 0);
+        if (ViewerDummyData::isViewer($request)) {
+            if ($testId > 0) {
+                return response()->json(['status' => 'OK', 'response' => 'SNMP OK (dummy)']);
+            }
+            return response()->json(ViewerDummyData::devices());
+        }
+
         if ($testId > 0) {
             return $this->testSnmp($testId);
         }
@@ -56,9 +65,43 @@ class DevicesApiController extends Controller
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
-        $id = (int) $request->query('id', 0);
-        if ($id > 0) {
-            DB::table('snmp_devices')->where('id', $id)->delete();
+        $id = (int) ($request->query('id', 0) ?: $request->input('id', 0));
+        if ($id <= 0) {
+            return response()->json(['success' => false, 'error' => 'Invalid device id'], 400);
+        }
+
+        try {
+            $deleted = DB::transaction(function () use ($id) {
+                // Clean up dependent data when tables exist.
+                if (Schema::hasTable('interfaces')) {
+                    $ifaceIds = DB::table('interfaces')->where('device_id', $id)->pluck('id')->all();
+                    if (!empty($ifaceIds) && Schema::hasTable('map_links')) {
+                        DB::table('map_links')
+                            ->where(function ($q) use ($ifaceIds) {
+                                $q->whereIn('interface_a_id', $ifaceIds)
+                                    ->orWhereIn('interface_b_id', $ifaceIds);
+                            })
+                            ->delete();
+                    }
+                    DB::table('interfaces')->where('device_id', $id)->delete();
+                }
+
+                if (Schema::hasTable('map_nodes')) {
+                    DB::table('map_nodes')->where('device_id', $id)->update(['device_id' => null]);
+                }
+
+                if (Schema::hasTable('alert_logs')) {
+                    DB::table('alert_logs')->where('device_id', $id)->update(['device_id' => null]);
+                }
+
+                return DB::table('snmp_devices')->where('id', $id)->delete();
+            });
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'Delete failed'], 500);
+        }
+
+        if ($deleted <= 0) {
+            return response()->json(['success' => false, 'error' => 'Device not found'], 404);
         }
 
         return response()->json(['success' => true]);

@@ -43,6 +43,34 @@
                 max-width: none !important;
             }
         }
+
+        /* Mobile tabs: 3-column grid with big icon and small label (Settings/Devices tabs, etc). */
+        @media (max-width: 768px) {
+            .tabs {
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 10px !important;
+                padding: 10px !important;
+            }
+
+            .tab {
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
+                align-items: center !important;
+                text-align: center !important;
+                gap: 6px !important;
+                padding: 12px 10px !important;
+                font-size: 0.72rem !important;
+                line-height: 1.1 !important;
+                min-height: 72px;
+            }
+
+            .tab i {
+                font-size: 1.25rem !important;
+                line-height: 1 !important;
+            }
+        }
     </style>
 
     <script src="{{ asset('assets/js/theme.js') }}?v={{ filemtime(public_path('assets/js/theme.js')) }}"></script>

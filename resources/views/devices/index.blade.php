@@ -15,7 +15,7 @@
             <i class="fas fa-sliders-h"></i> SNMP Configuration
         </button>
         <button class="tab" onclick="openTab('monitoring')">
-            <i class="fas fa-wave-square"></i> SFP / Interface Monitoring
+            <i class="fas fa-wave-square"></i> Interfaces Discovery
         </button>
     </div>
 
@@ -48,7 +48,7 @@
             <div class="monitoring-header">
                 <h3>
                     <i class="fas fa-fiber-optic"></i>
-                    SFP / Interface Monitoring
+                    Interfaces Discovery
                 </h3>
                 <p class="monitoring-subtitle">Pilih device untuk melihat data SFP & traffic</p>
             </div>

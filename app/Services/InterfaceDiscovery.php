@@ -5,6 +5,8 @@ namespace App\Services;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Services\FcmService;
+use Illuminate\Support\Facades\Log;
 
 class InterfaceDiscovery
 {
@@ -548,6 +550,13 @@ class InterfaceDiscovery
             }
         }
 
+        // Mobile push (best-effort)
+        try {
+            $this->sendMobilePush($severity, $eventType, $logMessage, $deviceMeta, $ifaceMeta);
+        } catch (\Throwable $e) {
+            // Do not break polling if push fails.
+        }
+
         // Telegram
         if (($settings['telegram_enabled'] ?? true) !== true) {
             return;
@@ -558,6 +567,107 @@ class InterfaceDiscovery
             return;
         }
         $this->telegramSendMessage($botToken, $chatId, $telegramText);
+    }
+
+    private function sendMobilePush(
+        string $severity,
+        string $eventType,
+        string $logMessage,
+        array $deviceMeta,
+        ?array $ifaceMeta
+    ): void {
+        if (!Schema::hasTable('device_tokens')) {
+            return;
+        }
+
+        $tokens = DB::table('device_tokens')
+            ->select(['token', 'user_id', 'last_seen_at'])
+            ->whereNotNull('token')
+            ->orderByDesc('last_seen_at')
+            ->get();
+
+        if ($tokens->isEmpty()) {
+            return;
+        }
+
+        $prefsCache = [];
+        $severityRank = [
+            'info' => 1,
+            'warning' => 2,
+            'critical' => 3,
+        ];
+        $sevVal = $severityRank[strtolower($severity)] ?? 1;
+        $title = strtoupper($severity) . ' • ' . str_replace('_', ' ', $eventType);
+        $body = $logMessage;
+
+        /** @var FcmService $fcm */
+        $fcm = app(FcmService::class);
+
+        foreach ($tokens as $row) {
+            $userId = (int) ($row->user_id ?? 0);
+            $token = (string) ($row->token ?? '');
+            if ($userId <= 0 || $token === '') {
+                continue;
+            }
+
+            if (!array_key_exists($userId, $prefsCache)) {
+                $prefsCache[$userId] = $this->loadMobileAlertPref($userId);
+            }
+
+            $pref = $prefsCache[$userId];
+            if (($pref['push_enabled'] ?? true) !== true) {
+                continue;
+            }
+            $min = strtolower((string) ($pref['severity_min'] ?? 'warning'));
+            $minVal = $severityRank[$min] ?? 2;
+            if ($sevVal < $minVal) {
+                continue;
+            }
+
+            try {
+                $fcm->sendToToken(
+                    deviceToken: $token,
+                    title: $title,
+                    body: $body,
+                    data: [
+                        'kind' => 'alert',
+                        'severity' => strtolower($severity),
+                        'event_type' => $eventType,
+                        'device_id' => (string) ($deviceMeta['device_id'] ?? ''),
+                        'if_index' => (string) ($ifaceMeta['if_index'] ?? ''),
+                        'ts' => date('c'),
+                    ],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('FCM push failed', [
+                    'user_id' => $userId,
+                    'token_prefix' => substr($token, 0, 16),
+                    'error' => $e->getMessage(),
+                ]);
+                continue;
+            }
+        }
+    }
+
+    private function loadMobileAlertPref(int $userId): array
+    {
+        if (!Schema::hasTable('settings')) {
+            return [
+                'push_enabled' => true,
+                'severity_min' => 'warning',
+            ];
+        }
+
+        $key = 'mobile_alert_pref_user_' . $userId;
+        $val = DB::table('settings')->where('name', $key)->value('value');
+        $decoded = $val ? json_decode((string) $val, true) : null;
+        if (!is_array($decoded)) {
+            return [
+                'push_enabled' => true,
+                'severity_min' => 'warning',
+            ];
+        }
+        return $decoded;
     }
 
     private function ensureAlertLogTable(): void

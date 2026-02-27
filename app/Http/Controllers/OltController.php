@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 
 class OltController extends Controller
 {
     public function index(Request $request)
     {
-        $olts = config('olt', []);
+        $isViewer = ViewerDummyData::isViewer($request);
+        $olts = $isViewer ? ViewerDummyData::oltConfig() : config('olt', []);
         if (!is_array($olts) || empty($olts)) {
             return view('olt.index', [
                 'pageTitle' => 'OLT Monitor',
@@ -35,6 +37,18 @@ class OltController extends Controller
             'total' => 0,
             'onu' => [],
         ];
+
+        if ($isViewer && $pon) {
+            $data = ViewerDummyData::oltPonData($pon);
+            return view('olt.index', [
+                'pageTitle' => 'OLT Monitor',
+                'olts' => $olts,
+                'oltId' => $oltId,
+                'pon' => $pon,
+                'data' => $data,
+                'lastUpdate' => date('Y-m-d H:i:s'),
+            ]);
+        }
 
         $jsonFile = null;
         if ($pon) {
