@@ -639,22 +639,22 @@ function showNodeSidebar(node) {
                     </div>
                 </div>
                 
-                ${node.device_id ? `
-                    <div class="node-actions">
+                <div class="node-actions">
+                    ${node.device_id ? `
                         <button class="btn btn-sm" onclick="testNodeSNMP(${node.device_id})">
                             <i class="fas fa-plug"></i> Test SNMP
                         </button>
                         <button class="btn btn-sm btn-outline" onclick="discoverNodeInterfaces(${node.device_id})">
                             <i class="fas fa-search"></i> Discover Interfaces
                         </button>
-                        <button class="btn btn-sm btn-primary action-edit" onclick="editNode(${node.id})">
-                            <i class="fas fa-edit"></i> Edit Node
-                        </button>
-                        <button class="btn btn-sm btn-danger action-delete" onclick="deleteNodeQuick(${node.id})">
-                            <i class="fas fa-trash-alt"></i> Delete Node
-                        </button>
-                    </div>
-                ` : ''}
+                    ` : ''}
+                    <button class="btn btn-sm btn-primary action-edit" onclick="editNode(${node.id})">
+                        <i class="fas fa-edit"></i> Edit Node
+                    </button>
+                    <button class="btn btn-sm btn-danger action-delete" onclick="deleteNodeQuick(${node.id})">
+                        <i class="fas fa-trash-alt"></i> Delete Node
+                    </button>
+                </div>
                 
                 ${interfacesHtml}
             </div>

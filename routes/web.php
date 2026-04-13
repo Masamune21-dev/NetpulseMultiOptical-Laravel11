@@ -10,14 +10,12 @@ use App\Http\Controllers\MapApiController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\MonitoringApiController;
 use App\Http\Controllers\MonitoringController;
-use App\Http\Controllers\OltController;
 use App\Http\Controllers\LegacyApiController;
 use App\Http\Controllers\SettingsApiController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\UsersApiController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\AlertLogsApiController;
-use App\Http\Controllers\OltApiController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -39,8 +37,6 @@ Route::middleware(['legacy.auth'])->group(function () {
     Route::get('/users', [UsersController::class, 'index']);
 
     Route::get('/settings', [SettingsController::class, 'index']);
-
-    Route::get('/olt', [OltController::class, 'index']);
 
     Route::get('/api/users', [UsersApiController::class, 'index'])
         ->middleware('legacy.role:admin,technician,viewer');
@@ -76,11 +72,6 @@ Route::middleware(['legacy.auth'])->group(function () {
         ->middleware('legacy.role:admin');
     Route::get('/api/logs', [SettingsApiController::class, 'logs'])
         ->middleware('legacy.role:admin,viewer');
-
-    Route::get('/api/olt', [OltApiController::class, 'list'])
-        ->middleware('legacy.role:admin,technician,viewer');
-    Route::get('/api/olt_data', [OltApiController::class, 'data'])
-        ->middleware('legacy.role:admin,technician,viewer');
 
     Route::get('/api/alert_logs', [AlertLogsApiController::class, 'index'])
         ->middleware('legacy.role:admin,technician,viewer');

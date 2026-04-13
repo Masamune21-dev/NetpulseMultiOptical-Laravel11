@@ -40,6 +40,10 @@ Homestead.yaml
 npm-debug.log*
 yarn-error.log*
 
+# Sensitive local scripts (keep example template)
+/scripts/huawei_telnet_expect.sh
+!/scripts/huawei_telnet_expect.example.sh
+
 # IDEs
 /.fleet/
 /.idea/

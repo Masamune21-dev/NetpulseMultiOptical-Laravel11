@@ -23,9 +23,6 @@ final class ViewerDummyData
             'sfpCount' => 32,
             'badOptical' => 3,
             'userCount' => 8,
-            'oltCount' => 2,
-            'ponCount' => 8,
-            'onuCount' => 512,
         ];
     }
 
@@ -460,45 +457,4 @@ final class ViewerDummyData
         return implode("\n", array_reverse($lines));
     }
 
-    public static function oltConfig(): array
-    {
-        return [
-            'olt-hioso-demo-1' => [
-                'name' => 'HIOSO-DEMO-1',
-                'pons' => ['0/1', '0/2', '0/3', '0/4'],
-            ],
-            'olt-hioso-demo-2' => [
-                'name' => 'HIOSO-DEMO-2',
-                'pons' => ['0/1', '0/2', '0/3', '0/4'],
-            ],
-        ];
-    }
-
-    public static function oltPonData(string $pon): array
-    {
-        $rows = [];
-        for ($i = 1; $i <= 16; $i++) {
-            $onuId = $pon . ':' . $i;
-            $isUp = ($i % 7) !== 0;
-            $rx = $isUp ? (-18.0 - (($i % 10) * 0.7)) : null;
-            $tx = $isUp ? (-2.0 - (($i % 6) * 0.4)) : null;
-            $rows[] = [
-                'onu_id' => $onuId,
-                'mac' => sprintf('aa:bb:cc:%02x:%02x:%02x', $i, $i, $i),
-                'status' => $isUp ? 'Up' : 'Down',
-                'name' => "ONU-DEMO-{$i}",
-                'tx_power' => $tx,
-                'rx_power' => $rx,
-                'temperature' => $isUp ? (30.0 + ($i % 5)) : null,
-                'signal' => !$isUp ? 'offline' : ($rx < -28 ? 'critical' : ($rx < -25 ? 'warning' : 'good')),
-                'uptime' => $isUp ? ($i . "d " . ($i * 2) . "h") : '-',
-            ];
-        }
-
-        return [
-            'pon' => $pon,
-            'total' => count($rows),
-            'onu' => $rows,
-        ];
-    }
 }

@@ -23,21 +23,6 @@
         </div>
 
         <div class="card">
-            <h3><i class="fas fa-layer-group"></i> Total OLT</h3>
-            <p><strong>{{ $oltCount }}</strong> olt terdaftar</p>
-        </div>
-
-        <div class="card">
-            <h3><i class="fas fa-network-wired"></i> Total PON</h3>
-            <p><strong>{{ $ponCount }}</strong> pon aktif</p>
-        </div>
-
-        <div class="card">
-            <h3><i class="fas fa-user-friends"></i> Total ONU</h3>
-            <p><strong>{{ $onuCount }}</strong> onu terdaftar</p>
-        </div>
-
-        <div class="card">
             <h3><i class="fas fa-users"></i> Total Users</h3>
             <p><strong>{{ $userCount }}</strong> user terdaftar</p>
         </div>

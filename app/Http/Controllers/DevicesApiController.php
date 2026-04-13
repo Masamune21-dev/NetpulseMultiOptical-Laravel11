@@ -39,8 +39,8 @@ class DevicesApiController extends Controller
 
         $data = $request->json()->all();
         $payload = [
-            'device_name' => $data['device_name'] ?? '',
-            'ip_address' => $data['ip_address'] ?? '',
+            'device_name' => trim((string) ($data['device_name'] ?? '')),
+            'ip_address' => trim((string) ($data['ip_address'] ?? '')),
             'snmp_version' => $data['snmp_version'] ?? '2c',
             'community' => $data['community'] ?? null,
             'snmp_user' => $data['snmp_user'] ?? null,
@@ -87,7 +87,21 @@ class DevicesApiController extends Controller
                 }
 
                 if (Schema::hasTable('map_nodes')) {
-                    DB::table('map_nodes')->where('device_id', $id)->update(['device_id' => null]);
+                    $nodeIds = DB::table('map_nodes')
+                        ->where('device_id', $id)
+                        ->pluck('id')
+                        ->all();
+
+                    if (!empty($nodeIds) && Schema::hasTable('map_links')) {
+                        DB::table('map_links')
+                            ->where(function ($q) use ($nodeIds) {
+                                $q->whereIn('node_a_id', $nodeIds)
+                                    ->orWhereIn('node_b_id', $nodeIds);
+                            })
+                            ->delete();
+                    }
+
+                    DB::table('map_nodes')->where('device_id', $id)->delete();
                 }
 
                 if (Schema::hasTable('alert_logs')) {
@@ -150,4 +164,5 @@ class DevicesApiController extends Controller
             return response()->json(['status' => 'FAILED', 'error' => $err]);
         }
     }
+
 }

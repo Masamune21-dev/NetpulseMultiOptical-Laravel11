@@ -85,32 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
             if (counts != null) ...[
               _QuickBand(counts: counts),
               const SizedBox(height: 14),
-              _SectionTitle(
-                title: 'Operations Snapshot',
-                subtitle: 'Ringkasan kapasitas dan perangkat inti',
-              ),
-              const SizedBox(height: 10),
-              _StatGrid(
-                items: [
-                  _StatItem(
-                    'Total OLT',
-                    counts.oltCount,
-                    Icons.storage_outlined,
-                  ),
-                  _StatItem('Total PON', counts.ponCount, Icons.hub_outlined),
-                  _StatItem(
-                    'Total ONU',
-                    counts.onuCount,
-                    Icons.device_hub_outlined,
-                  ),
-                  _StatItem(
-                    'Total User',
-                    counts.userCount,
-                    Icons.people_alt_outlined,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
               _ActionPanel(counts: counts),
             ],
             if (!_loading && counts == null && _error == null)
@@ -412,102 +386,6 @@ class _ActionPanel extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          subtitle,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: const Color(0xFF64748B)),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatItem {
-  const _StatItem(this.label, this.value, this.icon);
-
-  final String label;
-  final int value;
-  final IconData icon;
-}
-
-class _StatGrid extends StatelessWidget {
-  const _StatGrid({required this.items});
-
-  final List<_StatItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.15,
-      children: items.map((item) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(item.icon, color: scheme.primary),
-              ),
-              const Spacer(),
-              Text(
-                '${item.value}',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                item.label,
-                textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: const Color(0xFF475569)),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
     );
   }
 }

@@ -125,11 +125,6 @@
                         <i class="fas fa-map-marked-alt"></i><span>Map</span>
                     </a>
                 </li>
-                <li class="{{ request()->is('olt*') ? 'active' : '' }}">
-                    <a href="/olt">
-                        <i class="fas fa-server"></i><span>OLT</span>
-                    </a>
-                </li>
                 <li class="{{ request()->is('users*') ? 'active' : '' }}">
                     <a href="/users">
                         <i class="fas fa-user-shield"></i><span>Users</span>

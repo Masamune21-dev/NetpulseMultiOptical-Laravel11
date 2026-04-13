@@ -7,7 +7,6 @@ use App\Http\Controllers\Api\V1\LocationController;
 use App\Http\Controllers\Api\V1\LogsController;
 use App\Http\Controllers\Api\V1\MapController;
 use App\Http\Controllers\Api\V1\MonitoringController;
-use App\Http\Controllers\Api\V1\OltController;
 use App\Http\Controllers\Api\V1\PushTestController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\DashboardController;
@@ -26,9 +25,6 @@ Route::prefix('v1')->group(function () {
         Route::post('/device-token', [DeviceTokenController::class, 'store']);
         Route::post('/location', [LocationController::class, 'store']);
         Route::post('/push/test', [PushTestController::class, 'send']);
-
-        Route::get('/olt', [OltController::class, 'list']);
-        Route::get('/olt-data', [OltController::class, 'data']);
 
         Route::get('/dashboard', [DashboardController::class, 'index']);
 

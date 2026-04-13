@@ -90,6 +90,13 @@ function loadDevices() {
 // ===============================
 function openAddDevice() {
     if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
+    device_id.value = '';
+    device_name.value = '';
+    ip_address.value = '';
+    snmp_version.value = '2c';
+    community.value = '';
+    snmp_user.value = '';
+    is_active.value = '1';
     document.getElementById('deviceModal').style.display = 'flex';
 }
 

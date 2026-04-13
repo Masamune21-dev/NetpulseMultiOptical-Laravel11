@@ -25,9 +25,6 @@ class DashboardController extends Controller
                     'sfp_count' => $c['sfpCount'],
                     'bad_optical_count' => $c['badOptical'],
                     'user_count' => $c['userCount'],
-                    'olt_count' => $c['oltCount'],
-                    'pon_count' => $c['ponCount'],
-                    'onu_count' => $c['onuCount'],
                 ],
             ]);
         }
@@ -64,9 +61,6 @@ class DashboardController extends Controller
 
         $userCountRow = DB::selectOne("SELECT COUNT(*) as user_count FROM users");
 
-        $oltConfig = config('olt', []);
-        [$oltCount, $ponCount, $onuCount] = $this->computeOltSummary($oltConfig);
-
         return response()->json([
             'success' => true,
             'data' => [
@@ -75,37 +69,7 @@ class DashboardController extends Controller
                 'sfp_count' => (int) ($counts->sfp_count ?? 0),
                 'bad_optical_count' => $badOpticalCount,
                 'user_count' => (int) ($userCountRow->user_count ?? 0),
-                'olt_count' => $oltCount,
-                'pon_count' => $ponCount,
-                'onu_count' => $onuCount,
             ],
         ]);
-    }
-
-    private function computeOltSummary(array $oltConfig): array
-    {
-        $root = rtrim(storage_path('app/olt'), DIRECTORY_SEPARATOR);
-        $oltCount = count($oltConfig);
-        $ponCount = 0;
-        $onuCount = 0;
-
-        foreach ($oltConfig as $oltId => $olt) {
-            $pons = $olt['pons'] ?? [];
-            $ponCount += count($pons);
-
-            foreach ($pons as $pon) {
-                $ponSafe = str_replace('/', '_', $pon);
-                $jsonFile = $root . "/{$oltId}/pon_{$ponSafe}.json";
-                if (!is_file($jsonFile)) {
-                    continue;
-                }
-                $json = json_decode(file_get_contents($jsonFile), true);
-                if (is_array($json) && isset($json['total'])) {
-                    $onuCount += (int) $json['total'];
-                }
-            }
-        }
-
-        return [$oltCount, $ponCount, $onuCount];
     }
 }

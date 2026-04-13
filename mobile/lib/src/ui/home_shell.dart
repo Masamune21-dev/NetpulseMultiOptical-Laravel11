@@ -5,8 +5,6 @@ import 'screens/account_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/monitoring_screen.dart';
-import 'screens/olt_screen.dart';
-
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -30,7 +28,6 @@ class _HomeShellState extends State<HomeShell> {
     final pages = const [
       HomeScreen(),
       MonitoringScreen(),
-      OltScreen(),
       MapScreen(),
       AccountScreen(),
     ];
@@ -50,11 +47,6 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.monitor_heart_outlined),
             selectedIcon: Icon(Icons.monitor_heart),
             label: 'Monitoring',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.storage_outlined),
-            selectedIcon: Icon(Icons.storage),
-            label: 'OLT',
           ),
           NavigationDestination(
             icon: Icon(Icons.map_outlined),
