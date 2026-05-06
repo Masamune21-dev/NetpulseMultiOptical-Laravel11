@@ -37,6 +37,6 @@ class LogsController extends Controller
         }
 
         $tail = array_slice($lines, -200);
-        return response()->json(['success' => true, 'data' => implode(\"\\n\", $tail)]);
+        return response()->json(['success' => true, 'data' => implode("\n", $tail)]);
     }
 }

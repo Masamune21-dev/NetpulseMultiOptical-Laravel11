@@ -3,45 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - NetPulse MultiOptical</title>
+    <title>Login — NetPulse MultiOptical</title>
     <script>
         (function () {
             try {
                 var theme = localStorage.getItem('theme');
-                if (theme) {
-                    document.documentElement.setAttribute('data-theme', theme);
-                }
-                var primary = localStorage.getItem('primary_color') || '#6366f1';
-                var soft = localStorage.getItem('primary_soft') || '#8b5cf6';
+                if (theme) document.documentElement.setAttribute('data-theme', theme);
+                var primary = localStorage.getItem('primary_color') || '#111111';
+                var soft = localStorage.getItem('primary_soft') || '#3d3d3d';
                 document.documentElement.style.setProperty('--primary', primary);
                 document.documentElement.style.setProperty('--primary-soft', soft);
-                document.documentElement.style.setProperty(
-                    '--primary-gradient',
-                    'linear-gradient(135deg, ' + primary + ' 0%, ' + soft + ' 100%)'
-                );
-                document.documentElement.style.setProperty(
-                    '--sidebar',
-                    'linear-gradient(160deg, ' + primary + ' 0%, ' + soft + ' 55%, ' + primary + ' 100%)'
-                );
+                document.documentElement.style.setProperty('--primary-gradient',
+                    'linear-gradient(135deg, ' + primary + ' 0%, ' + soft + ' 100%)');
+                document.documentElement.style.setProperty('--sidebar',
+                    'linear-gradient(160deg, ' + primary + ' 0%, ' + soft + ' 55%, ' + primary + ' 100%)');
             } catch (e) { }
         })();
     </script>
     <link rel="stylesheet" href="{{ asset('assets/css/style.min.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        /* ══════════════════════════════════════════════════
+           LOGIN PAGE — CYBER NEON THEME
+        ══════════════════════════════════════════════════ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         body.login-page {
             min-height: 100vh;
             display: grid;
             grid-template-columns: 1fr 1fr;
             background: var(--bg);
             color: var(--text);
-            position: relative;
             overflow-x: hidden;
+            position: relative;
         }
 
+        /* ── Left panel ─────────────────────────────────── */
         .login-left {
             background: var(--sidebar);
-            color: white;
+            color: #fff;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -50,17 +52,57 @@
             overflow: hidden;
         }
 
+        /* Cyber dot-grid overlay */
         .login-left::before {
             content: '';
             position: absolute;
-            top: -50%;
-            left: -20%;
-            width: 150%;
-            height: 150%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-            background-size: 30px 30px;
-            opacity: 0.1;
+            inset: 0;
+            background-image:
+                radial-gradient(circle, rgba(255,255,255,.12) 1px, transparent 1px);
+            background-size: 28px 28px;
+            pointer-events: none;
             z-index: 1;
+        }
+
+        /* Scanline effect */
+        .login-left::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 3px,
+                rgba(0,0,0,.04) 3px,
+                rgba(0,0,0,.04) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Floating glow orbs */
+        .login-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            pointer-events: none;
+            z-index: 0;
+            animation: orb-float 8s ease-in-out infinite;
+        }
+        .login-orb-1 {
+            width: 300px; height: 300px;
+            background: rgba(255,255,255,.08);
+            top: -80px; left: -80px;
+        }
+        .login-orb-2 {
+            width: 200px; height: 200px;
+            background: rgba(255,255,255,.06);
+            bottom: 60px; right: -40px;
+            animation-delay: -4s;
+        }
+        @keyframes orb-float {
+            0%,100% { transform: translateY(0) scale(1); }
+            50%      { transform: translateY(-20px) scale(1.05); }
         }
 
         .brand-container {
@@ -73,131 +115,197 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
-
         .logo-icon {
-            width: 42px;
-            height: 42px;
-            background: var(--primary-gradient);
-            border-radius: 12px;
+            width: 46px; height: 46px;
+            background: rgba(255,255,255,.15);
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            font-size: 18px;
-            box-shadow: var(--shadow-sm);
+            font-size: 20px;
+            box-shadow: 0 0 20px rgba(255,255,255,.2), inset 0 1px 0 rgba(255,255,255,.3);
+            border: 1px solid rgba(255,255,255,.2);
         }
-
         .logo-text {
-            font-size: 24px;
+            font-family: 'Space Mono', monospace;
+            font-size: 1.1rem;
             font-weight: 700;
+            letter-spacing: 0.02em;
         }
-
-        .tagline {
-            opacity: 0.9;
+        .logo-sub {
+            font-size: 0.7rem;
+            opacity: .6;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
         }
 
         .login-left h1 {
-            font-size: 2.4rem;
-            letter-spacing: -0.5px;
+            position: relative;
+            z-index: 2;
+            font-size: 2.2rem;
             font-weight: 800;
             line-height: 1.2;
-            margin-bottom: 1.5rem;
-            background: linear-gradient(to right, #fff, rgba(255, 255, 255, 0.85));
+            margin-bottom: 1rem;
+            background: linear-gradient(to right, #fff, rgba(255,255,255,.8));
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
         }
 
-        .login-left p {
-            font-size: 1.1rem;
+        .login-left > p {
+            position: relative;
+            z-index: 2;
+            font-size: 0.95rem;
             line-height: 1.6;
-            opacity: 0.9;
-            max-width: 500px;
+            opacity: .85;
+            max-width: 420px;
         }
 
         .features {
-            margin-top: 2.2rem;
+            position: relative;
+            z-index: 2;
+            margin-top: 2rem;
             display: flex;
             flex-direction: column;
-            gap: 1.2rem;
+            gap: 1rem;
         }
-
         .feature {
             display: flex;
             align-items: center;
             gap: 12px;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
-
         .feature-icon {
-            width: 24px;
-            height: 24px;
+            width: 28px; height: 28px;
+            background: rgba(255,255,255,.15);
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: rgba(255, 255, 255, 0.9);
+            flex-shrink: 0;
+            border: 1px solid rgba(255,255,255,.1);
         }
 
+        /* Status bar at bottom of left panel */
+        .login-status-bar {
+            position: absolute;
+            z-index: 2;
+            bottom: 24px;
+            left: 4rem;
+            right: 4rem;
+            display: flex;
+            gap: 20px;
+            opacity: .65;
+        }
+        .login-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .login-stat__val {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .login-stat__label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            opacity: .8;
+        }
+
+        /* ── Right panel ─────────────────────────────────── */
         .login-right {
-            background: var(--surface);
+            background: var(--bg);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 3rem;
+            padding: 3rem 2rem;
+            position: relative;
+        }
+
+        /* Subtle cyber grid on right panel */
+        .login-right::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,0,0,.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,.025) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
         }
 
         .login-container {
+            position: relative;
+            z-index: 1;
             width: 100%;
             max-width: 420px;
-            background: var(--panel);
-            padding: 2.8rem;
+            background: var(--surface, rgba(255,255,255,.04));
+            padding: 2.4rem;
             border-radius: 22px;
-            box-shadow: var(--shadow-lg);
             border: 1px solid var(--border);
+            box-shadow:
+                0 0 0 1px var(--ink-2),
+                0 24px 48px rgba(0,0,0,.15),
+                0 0 80px var(--ink-2);
         }
 
-        .login-header h2 {
-            font-size: 1.9rem;
-            margin-bottom: 0.4rem;
+        /* Top accent line on card */
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 10%; right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--ink-5), transparent);
+            border-radius: 0 0 99px 99px;
         }
 
-        .login-header p {
-            color: var(--text-soft);
+        .login-header {
             margin-bottom: 1.8rem;
         }
+        .login-header h2 {
+            font-size: 1.7rem;
+            font-weight: 800;
+            margin-bottom: 0.3rem;
+        }
+        .login-header p {
+            color: var(--text-soft, #94a3b8);
+            font-size: 0.88rem;
+        }
 
+        /* Alerts */
         .alert {
-            padding: 0.9rem 1rem;
+            padding: 0.8rem 1rem;
             border-radius: 12px;
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 0.95rem;
+            font-size: 0.88rem;
             margin-bottom: 1rem;
         }
-
         .alert-error {
-            background: rgba(239, 68, 68, 0.1);
+            background: rgba(239,68,68,.08);
             color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239,68,68,.2);
         }
-
         .alert-success {
-            background: rgba(34, 197, 94, 0.1);
+            background: rgba(34,197,94,.08);
             color: #22c55e;
-            border: 1px solid rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34,197,94,.2);
         }
 
-        .form-group {
-            margin-bottom: 1.2rem;
-        }
-
+        /* Form elements */
+        .form-group { margin-bottom: 1.1rem; }
         .form-label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.45rem;
+            font-size: 0.83rem;
             font-weight: 600;
+            color: var(--text, #f1f5f9);
         }
 
         .input-group {
@@ -205,148 +313,173 @@
             display: flex;
             align-items: center;
         }
-
         .input-icon {
             position: absolute;
             left: 14px;
-            width: 18px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-soft);
+            color: var(--text-soft, #64748b);
+            font-size: 0.85rem;
+            z-index: 1;
         }
-
         .form-control {
             width: 100%;
-            padding: 0.9rem 0.9rem 0.9rem 3rem !important;
+            padding: 0.85rem 0.9rem 0.85rem 2.8rem !important;
             border-radius: 12px;
-            border: 1px solid var(--border);
-            background: var(--surface);
-            color: var(--text);
+            border: 1px solid rgba(99,102,241,.2);
+            background: var(--ink-1);
+            color: var(--text, #f1f5f9);
             outline: none;
-            transition: border 0.2s ease, box-shadow 0.2s ease;
+            font-size: 0.9rem;
+            transition: border-color .2s, box-shadow .2s;
         }
-
-        .login-page .form-control {
-            padding-left: 3rem !important;
-        }
-
         .form-control:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            border-color: var(--ink-5);
+            box-shadow: 0 0 0 3px var(--ink-3);
+            background: var(--ink-2);
         }
+        .form-control::placeholder { color: var(--text-soft, #64748b); }
 
-        .password-field {
-            padding-right: 2.8rem;
-        }
-
+        .password-field { padding-right: 2.8rem !important; }
         .password-toggle {
             position: absolute;
-            right: 10px;
+            right: 12px;
             border: none;
             background: transparent;
-            color: var(--text-soft);
+            color: var(--text-soft, #64748b);
             cursor: pointer;
+            font-size: 0.85rem;
+            transition: color .15s;
         }
+        .password-toggle:hover { color: var(--primary); }
 
+        /* Login button */
         .btn-login {
             width: 100%;
-            padding: 0.85rem 1.1rem;
+            padding: 0.85rem;
             border-radius: 12px;
             border: none;
             background: var(--primary-gradient);
-            color: white;
+            color: #fff;
             font-weight: 700;
             font-size: 0.95rem;
-            line-height: 1;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: transform .2s, box-shadow .2s;
+            box-shadow: 0 4px 20px var(--shadow-sm);
+            margin-top: 4px;
         }
-
+        .btn-login:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 28px var(--shadow-md);
+        }
+        .btn-login:disabled {
+            opacity: .7;
+            cursor: not-allowed;
+            transform: none;
+        }
         .btn-login .btn-icon {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            width: 1.25em;
-            height: 1.25em;
-            line-height: 1;
+            width: 1.2em; height: 1.2em;
         }
 
-        .btn-login .btn-icon i {
-            display: block;
-            line-height: 1;
-        }
-
-        .btn-login:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
-
-        .btn-login:hover {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-
+        /* Footer */
         .login-footer {
-            margin-top: 1.8rem;
+            margin-top: 1.6rem;
             text-align: center;
-            font-size: 0.85rem;
-            color: var(--text-soft);
+            font-size: 0.78rem;
+            color: var(--text-soft, #64748b);
+            line-height: 1.8;
         }
-
         .login-footer a {
             color: var(--primary);
             text-decoration: none;
         }
+        .login-footer a:hover { text-decoration: underline; }
 
+        /* Divider */
+        .login-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 1.2rem 0;
+            color: var(--text-soft, #64748b);
+            font-size: 0.75rem;
+        }
+        .login-divider::before,
+        .login-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* Responsive */
         @media (max-width: 900px) {
-            body.login-page {
-                grid-template-columns: 1fr;
-            }
-            .login-left {
-                display: none;
-            }
-            .login-right {
-                padding: 2rem;
-            }
+            body.login-page { grid-template-columns: 1fr; }
+            .login-left { display: none; }
+            .login-right { padding: 1.5rem; min-height: 100vh; }
         }
     </style>
 </head>
 <body class="login-page">
+
+    {{-- Left Panel --}}
     <div class="login-left">
+        <div class="login-orb login-orb-1"></div>
+        <div class="login-orb login-orb-2"></div>
+
         <div class="brand-container">
             <div class="logo">
                 <div class="logo-icon"><i class="fas fa-wave-square"></i></div>
-                <div class="logo-text">NetPulse</div>
+                <div>
+                    <div class="logo-text">NetPulse</div>
+                    <div class="logo-sub">MultiOptical</div>
+                </div>
             </div>
-            <div class="tagline">Network Optical Monitoring</div>
         </div>
-        <h1>NetPulse MultiOptical Monitoring System</h1>
-        <p>Monitoring jaringan optik dengan status real-time dan informasi lengkap perangkat Anda.</p>
+
+        <h1>Network Optical<br>Monitoring System</h1>
+        <p>Monitoring jaringan optik dengan status real-time, alert otomatis, dan informasi lengkap perangkat Anda.</p>
+
         <div class="features">
             <div class="feature">
-                <div class="feature-icon"><i class="fas fa-check-circle"></i></div>
-                <span>SFP Aktif dengan pembacaan power optik</span>
+                <div class="feature-icon"><i class="fas fa-circle-nodes"></i></div>
+                <span>SFP monitoring dengan pembacaan TX/RX power optik</span>
             </div>
             <div class="feature">
-                <div class="feature-icon"><i class="fas fa-check-circle"></i></div>
-                <span>Optical Critical untuk deteksi loss</span>
+                <div class="feature-icon"><i class="fas fa-triangle-exclamation"></i></div>
+                <span>Alert otomatis untuk deteksi redaman & port down</span>
             </div>
             <div class="feature">
-                <div class="feature-icon"><i class="fas fa-check-circle"></i></div>
-                <span>OLT, PON, dan ONU terintegrasi</span>
+                <div class="feature-icon"><i class="fas fa-map-marked-alt"></i></div>
+                <span>Network topology map interaktif real-time</span>
             </div>
             <div class="feature">
-                <div class="feature-icon"><i class="fas fa-check-circle"></i></div>
-                <span>Manajemen user dan akses berbasis role</span>
+                <div class="feature-icon"><i class="fas fa-user-shield"></i></div>
+                <span>Manajemen user & akses berbasis role (admin / tech / viewer)</span>
+            </div>
+        </div>
+
+        <div class="login-status-bar">
+            <div class="login-stat">
+                <div class="login-stat__val">24/7</div>
+                <div class="login-stat__label">Monitoring</div>
+            </div>
+            <div class="login-stat">
+                <div class="login-stat__val">SNMP</div>
+                <div class="login-stat__label">v2c / v3</div>
+            </div>
+            <div class="login-stat">
+                <div class="login-stat__val">dBm</div>
+                <div class="login-stat__label">Optical Power</div>
             </div>
         </div>
     </div>
 
+    {{-- Right Panel --}}
     <div class="login-right">
         <div class="login-container">
             <div class="login-header">
@@ -356,7 +489,7 @@
 
             @if ($errors->any())
                 <div class="alert alert-error">
-                    <span class="alert-icon"><i class="fas fa-exclamation-circle"></i></span>
+                    <i class="fas fa-exclamation-circle"></i>
                     <span>{{ $errors->first() }}</span>
                 </div>
             @endif
@@ -369,7 +502,7 @@
                     <div class="input-group">
                         <span class="input-icon"><i class="fas fa-user"></i></span>
                         <input type="text" id="username" name="username" class="form-control"
-                            placeholder="Your username" value="{{ old('username') }}" required autofocus>
+                            placeholder="Masukkan username" value="{{ old('username') }}" required autofocus>
                     </div>
                 </div>
 
@@ -378,9 +511,8 @@
                     <div class="input-group">
                         <span class="input-icon"><i class="fas fa-lock"></i></span>
                         <input type="password" id="password" name="password" class="form-control password-field"
-                            placeholder="Your password" required>
-                        <button type="button" class="password-toggle" onclick="togglePassword()"
-                            aria-label="Show password">
+                            placeholder="Masukkan password" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword()" aria-label="Tampilkan password">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
@@ -392,67 +524,53 @@
                 </button>
             </form>
 
+            <div class="login-divider">atau</div>
+
             <div class="login-footer">
-                <p>Butuh bantuan? <a href="mailto:masamunekazuto21@gmeail.com">Hubungi support</a></p>
-                <p>© {{ date('Y') }} NetPulse MultiOptical. Web ini dibuat oleh Masamune.</p>
+                <p>Butuh bantuan? <a href="mailto:masamunekazuto21@gmail.com">Hubungi support</a></p>
+                <p>© {{ date('Y') }} NetPulse MultiOptical &nbsp;·&nbsp; by Masamune</p>
             </div>
         </div>
     </div>
 
     <script>
         function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const toggleIcon = document.querySelector('.password-toggle i');
-
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleIcon.className = 'fas fa-eye-slash';
-                passwordInput.setAttribute('data-visible', 'true');
+            const inp = document.getElementById('password');
+            const ico = document.querySelector('.password-toggle i');
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                ico.className = 'fas fa-eye-slash';
             } else {
-                passwordInput.type = 'password';
-                toggleIcon.className = 'fas fa-eye';
-                passwordInput.removeAttribute('data-visible');
+                inp.type = 'password';
+                ico.className = 'fas fa-eye';
             }
-
-            passwordInput.focus();
+            inp.focus();
         }
 
         document.getElementById('loginForm').addEventListener('submit', function () {
-            const button = document.getElementById('loginButton');
-            const buttonText = document.getElementById('buttonText');
-            const buttonIcon = document.getElementById('buttonIcon').querySelector('i');
-
-            button.disabled = true;
-            buttonText.textContent = 'Signing in...';
-            buttonIcon.className = 'fas fa-spinner fa-spin';
-
-            this.classList.add('form-loading');
+            const btn = document.getElementById('loginButton');
+            const txt = document.getElementById('buttonText');
+            const ico = document.getElementById('buttonIcon').querySelector('i');
+            btn.disabled = true;
+            txt.textContent = 'Signing in...';
+            ico.className = 'fas fa-spinner fa-spin';
         });
 
         document.addEventListener('DOMContentLoaded', function () {
-            const usernameField = document.getElementById('username');
-            if (usernameField) {
-                setTimeout(() => {
-                    usernameField.focus();
-                }, 300);
-            }
+            const u = document.getElementById('username');
+            if (u) setTimeout(() => u.focus(), 200);
 
             document.addEventListener('keydown', function (e) {
-                if (e.ctrlKey && e.key === '/') {
-                    e.preventDefault();
-                    document.getElementById('username').focus();
-                }
-                if (e.ctrlKey && e.key === '.') {
-                    e.preventDefault();
-                    document.getElementById('password').focus();
-                }
+                if (e.ctrlKey && e.key === '/') { e.preventDefault(); document.getElementById('username').focus(); }
+                if (e.ctrlKey && e.key === '.') { e.preventDefault(); document.getElementById('password').focus(); }
+                if (e.ctrlKey && e.shiftKey && e.key === 'P') { e.preventDefault(); togglePassword(); }
             });
         });
 
         document.addEventListener('keypress', function (e) {
             if (e.key === 'Enter' && !e.shiftKey) {
-                const focused = document.activeElement;
-                if (focused.tagName !== 'TEXTAREA' && focused.type !== 'button') {
+                const f = document.activeElement;
+                if (f.tagName !== 'TEXTAREA' && f.type !== 'button') {
                     e.preventDefault();
                     if (!document.getElementById('loginButton').disabled) {
                         document.getElementById('loginForm').submit();
@@ -461,27 +579,13 @@
             }
         });
 
-        document.getElementById('username').addEventListener('input', function () {
-            const errorAlert = document.querySelector('.alert-error');
-            if (errorAlert) {
-                errorAlert.style.opacity = '0';
-                setTimeout(() => errorAlert.remove(), 300);
-            }
-        });
-
-        document.getElementById('password').addEventListener('input', function () {
-            const errorAlert = document.querySelector('.alert-error');
-            if (errorAlert) {
-                errorAlert.style.opacity = '0';
-                setTimeout(() => errorAlert.remove(), 300);
-            }
-        });
-
-        document.addEventListener('keydown', function (e) {
-            if (e.ctrlKey && e.shiftKey && e.key === 'P') {
-                e.preventDefault();
-                togglePassword();
-            }
+        // Auto-dismiss error alert on typing
+        ['username','password'].forEach(function(id) {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', function () {
+                const err = document.querySelector('.alert-error');
+                if (err) { err.style.opacity = '0'; err.style.transition = 'opacity .25s'; setTimeout(() => err.remove(), 280); }
+            });
         });
     </script>
 </body>

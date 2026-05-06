@@ -1,28 +1,6 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="topbar">
-        <div class="topbar-content">
-            <h1><i class="fas fa-map-marked-alt"></i> Network Map</h1>
-            <div class="topbar-actions">
-                <button class="btn btn-outline" id="lockBtn">
-                    <i class="fas fa-lock-open"></i> Unlocked
-                </button>
-                <button class="btn btn-outline" onclick="openAddLinkModal()">
-                    <i class="fas fa-link"></i> Connection
-                </button>
-                <button class="btn btn-outline" id="lineEditBtn">
-                    <i class="fas fa-bezier-curve"></i> Edit Lines
-                </button>
-                <button class="btn action-create" onclick="openAddNodeModal()">
-                    <i class="fas fa-plus"></i> Add Node
-                </button>
-                <button class="btn btn-outline" onclick="refreshMap()">
-                    <i class="fas fa-sync"></i> Refresh
-                </button>
-            </div>
-        </div>
-    </div>
 
     <div class="modal" id="addLinkModal">
         <div class="modal-box">
@@ -72,6 +50,32 @@
                 <label>Existing Connections</label>
                 <div id="linkList" class="connection-list"></div>
             </div>
+        </div>
+    </div>
+
+    {{-- Map Toolbar Card --}}
+    <div class="map-toolbar-card">
+        <span class="map-toolbar-label">
+            <i class="fas fa-map-marked-alt"></i> Map Controls
+        </span>
+        <div class="map-toolbar-actions">
+            <button class="btn btn-outline" id="lockBtn" style="white-space:nowrap">
+                <i class="fas fa-lock-open"></i> Unlocked
+            </button>
+            <div class="map-toolbar-divider"></div>
+            <button class="btn btn-outline" onclick="openAddLinkModal()" style="white-space:nowrap">
+                <i class="fas fa-link"></i> Connection
+            </button>
+            <button class="btn btn-outline" id="lineEditBtn" style="white-space:nowrap">
+                <i class="fas fa-bezier-curve"></i> Edit Lines
+            </button>
+            <div class="map-toolbar-divider"></div>
+            <button class="btn action-create" onclick="openAddNodeModal()" style="white-space:nowrap">
+                <i class="fas fa-plus"></i> Add Node
+            </button>
+            <button class="btn btn-outline" onclick="refreshMap()" style="white-space:nowrap">
+                <i class="fas fa-sync"></i> Refresh
+            </button>
         </div>
     </div>
 
@@ -260,35 +264,83 @@
     @push('styles')
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <style>
+            /* ── Map Toolbar Card ─────────────────────── */
+            .map-toolbar-card {
+                background: var(--surface, rgba(255,255,255,.04));
+                border: 1px solid var(--border);
+                border-radius: 18px;
+                padding: 14px 18px;
+                margin-bottom: 14px;
+                position: relative;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+            .map-toolbar-card::before {
+                content: '';
+                position: absolute;
+                top: 0; left: 0; right: 0;
+                height: 2px;
+                background: var(--primary-gradient);
+                border-radius: 18px 18px 0 0;
+            }
+            .map-toolbar-label {
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                color: var(--text-muted, #94a3b8);
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                white-space: nowrap;
+            }
+            .map-toolbar-actions {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .map-toolbar-divider {
+                width: 1px;
+                height: 28px;
+                background: var(--border, rgba(99,102,241,.15));
+                flex-shrink: 0;
+            }
             @media (max-width: 768px) {
-                /* Map topbar: make action buttons a 3-column grid on phones. */
-                .topbar .topbar-content {
+                .map-toolbar-card {
                     flex-direction: column;
                     align-items: stretch;
                     gap: 10px;
+                    border-radius: 14px;
+                    padding: 12px 14px;
                 }
-
-                .topbar .topbar-actions {
-                    width: 100%;
+                .map-toolbar-actions {
                     display: grid;
-                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                    grid-template-columns: repeat(3, 1fr);
                     gap: 8px;
                 }
-
-                .topbar .topbar-actions .btn {
-                    width: 100%;
-                    justify-content: center;
-                    white-space: nowrap;
+                .map-toolbar-divider { display: none; }
+            }
+            @media (max-width: 480px) {
+                .map-toolbar-actions {
+                    grid-template-columns: repeat(2, 1fr);
                 }
             }
 
             .map-container {
                 position: relative;
-                height: calc(100vh - 350px);
+                height: calc(100vh - 230px);
                 width: 100%;
-                min-height: 500px;
-            background: var(--bg-secondary);
-        }
+                min-height: 420px;
+                background: var(--bg-secondary);
+                border-radius: 18px;
+                border: 1px solid var(--border);
+                overflow: hidden;
+            }
 
         #networkMap {
             width: 100%;
@@ -301,13 +353,14 @@
             top: 15px;
             right: 15px;
             z-index: 1000;
-            background: rgba(255, 255, 255, .95);
-            backdrop-filter: blur(12px);
+            background: var(--surface, rgba(15,15,35,.96));
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-radius: 14px;
             padding: 18px;
             width: 260px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, .12);
-            border: 1px solid rgba(255, 255, 255, .3);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .3), 0 0 0 1px rgba(99,102,241,.15);
+            border: 1px solid rgba(99,102,241,.2);
             opacity: 0;
             pointer-events: none;
             transform: translateY(-10px) scale(.95);
@@ -332,16 +385,17 @@
             width: 44px;
             height: 44px;
             border-radius: 12px;
-            background: white;
-            border: none;
+            background: var(--surface, rgba(15,15,35,.95));
+            border: 1px solid rgba(99,102,241,.25);
             cursor: pointer;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, .15);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, .25), 0 0 0 1px rgba(99,102,241,.1);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 18px;
-            color: #6366f1;
+            color: #818cf8;
             transition: .2s;
+            backdrop-filter: blur(10px);
         }
 
         .map-control-btn:hover {
@@ -456,9 +510,11 @@
             top: 80px;
             width: 460px;
             height: calc(100vh - 100px);
-            background: rgba(255, 255, 255, 0.98);
-            border-left: 1px solid rgba(0, 0, 0, 0.1);
-            box-shadow: -5px 0 30px rgba(0, 0, 0, 0.1);
+            background: var(--surface, rgba(15,15,35,.98));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(99,102,241,.2);
+            box-shadow: -8px 0 40px rgba(0, 0, 0, .3), -1px 0 0 rgba(99,102,241,.1);
             z-index: 1001;
             transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             overflow-y: auto;

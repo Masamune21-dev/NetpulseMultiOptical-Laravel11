@@ -1,24 +1,17 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="topbar">
-    <h1>
-        <i class="fas fa-gear"></i>
-        Settings
-    </h1>
-</div>
-
-<div class="tabs">
-    <button class="tab active" onclick="openTab('telegram')">
+<div class="dev-tabs">
+    <button class="dev-tab active" onclick="openTab('telegram')">
         <i class="fab fa-telegram"></i> Telegram Bot
     </button>
-    <button class="tab" onclick="openTab('alert')">
+    <button class="dev-tab" onclick="openTab('alert')">
         <i class="fas fa-bell"></i> Alert
     </button>
-    <button class="tab" onclick="openTab('theme')">
+    <button class="dev-tab" onclick="openTab('theme')">
         <i class="fas fa-palette"></i> Theme
     </button>
-    <button class="tab" onclick="openTab('logs')">
+    <button class="dev-tab" onclick="openTab('logs')">
         <i class="fas fa-file-lines"></i> Logs
     </button>
 </div>
@@ -32,7 +25,14 @@
 
         <div class="form-group">
             <label>Bot Token</label>
-            <input id="bot_token" placeholder="123456:ABC-DEF...">
+            <div style="position:relative;display:flex;align-items:center">
+                <input id="bot_token" type="password" placeholder="123456:ABC-DEF..." style="padding-right:42px;width:100%">
+                <button type="button" id="toggleBotToken"
+                    onclick="(function(){var i=document.getElementById('bot_token'),b=document.getElementById('toggleBotToken');i.type=i.type==='password'?'text':'password';b.innerHTML=i.type==='password'?'<i class=\'fas fa-eye\'></i>':'<i class=\'fas fa-eye-slash\'></i>';})()"
+                    style="position:absolute;right:10px;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:0.85rem;padding:4px;line-height:1">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
         </div>
 
         <div class="form-group">
@@ -226,7 +226,7 @@
                     <div class="theme-color-picker">
                         <label>Secondary</label>
                         <div class="picker-field">
-                            <input id="primary_soft" type="color" value="#8b5cf6">
+                            <input id="primary_soft" type="color" value="#3d3d3d">
                             <span id="primarySoftHex">#8b5cf6</span>
                         </div>
                     </div>
@@ -291,6 +291,77 @@
 
 @push('styles')
 <style>
+    /* ── Settings card — konsisten dengan halaman lain ── */
+    .card {
+        background: var(--surface) !important;
+        border: 1.5px solid var(--border) !important;
+        border-radius: 14px !important;
+        overflow: hidden;
+        position: relative;
+        padding: 0 !important;
+        box-shadow: var(--shadow-sm) !important;
+        transform: none !important;
+        transition: border-color .2s, box-shadow .2s !important;
+    }
+    .card:hover {
+        transform: none !important;
+        border-color: var(--ink-5) !important;
+        box-shadow: var(--shadow-md) !important;
+    }
+    .card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 2px;
+        background: var(--primary-gradient);
+        border-radius: 14px 14px 0 0;
+        opacity: 1;
+        z-index: 1;
+    }
+    .card:hover::before {
+        opacity: 1;
+    }
+    /* Card header area */
+    .card > h3:first-of-type {
+        font-size: 0.88rem !important;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text) !important;
+        padding: 16px 20px 14px;
+        border-bottom: 1px solid var(--border);
+        margin: 0 !important;
+    }
+    .card > h3:first-of-type i { color: var(--primary) !important; }
+    /* Card body */
+    .card > .form-group,
+    .card > .alert-grid,
+    .card > .theme-grid,
+    .card > .log-toolbar,
+    .card > p {
+        padding: 16px 20px;
+        margin: 0;
+    }
+    .card > .form-group { padding: 16px 20px 0; }
+    .modal-actions {
+        margin: 0 !important;
+        padding: 12px 20px !important;
+        border-radius: 0 0 14px 14px !important;
+    }
+
+    /* ── Settings form label style ── */
+    .card .form-group > label,
+    .card .form-group > div > label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-muted, #94a3b8);
+        display: block;
+        margin-bottom: 6px;
+    }
+
     .theme-card {
         position: relative;
     }
@@ -457,7 +528,7 @@
         height: 40px;
         border-radius: 12px;
         border: 1px solid rgba(0, 0, 0, 0.08);
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        background: var(--primary-gradient);
     }
 
     .preview-samples {
@@ -786,7 +857,7 @@
     }
 
     .alert-log-time {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-family: 'Space Mono', monospace;
         font-variant-numeric: tabular-nums;
         color: var(--text-soft);
         white-space: nowrap;
@@ -832,7 +903,7 @@
     }
 
     .alert-chip code {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-family: 'Space Mono', monospace;
         font-size: 0.78rem;
     }
 
@@ -843,6 +914,7 @@
         text-overflow: ellipsis;
         display: -webkit-box;
         -webkit-line-clamp: 3;
+        line-clamp: 3;
         -webkit-box-orient: vertical;
     }
 
@@ -886,6 +958,7 @@
         }
         .alert-log-message {
             -webkit-line-clamp: 5;
+            line-clamp: 5;
         }
     }
 
@@ -916,4 +989,18 @@
 
 @push('scripts')
 <script src="{{ asset('assets/js/settings.js') }}?v={{ filemtime(public_path('assets/js/settings.js')) }}"></script>
+<script>
+// Override openTab to work with .dev-tab styling
+(function () {
+    window.openTab = function (id) {
+        document.querySelectorAll('.tab-content').forEach(function (el) {
+            el.classList.toggle('active', el.id === id);
+        });
+        document.querySelectorAll('.dev-tab').forEach(function (btn) {
+            var matches = btn.getAttribute('onclick') && btn.getAttribute('onclick').includes("'" + id + "'");
+            btn.classList.toggle('active', matches);
+        });
+    };
+})();
+</script>
 @endpush

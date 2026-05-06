@@ -5,7 +5,7 @@ let autoRefreshPaused = false;
 
 const deviceSelect = document.getElementById('deviceSelect');
 const interfaceSelect = document.getElementById('interfaceSelect');
-const rangeSelectMobile = document.getElementById('rangeSelectMobile');
+const rangeSelect = document.getElementById('rangeSelect');
 
 /* ======================================================
    INIT
@@ -14,16 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initChart();
     loadDevices();
 
-    document.querySelectorAll('.btn-range').forEach(btn => {
-        btn.addEventListener('click', () => {
-            setRangeUI(btn.dataset.range);
-        });
-    });
-
-    if (rangeSelectMobile) {
-        rangeSelectMobile.value = currentRange;
-        rangeSelectMobile.addEventListener('change', () => {
-            setRangeUI(rangeSelectMobile.value);
+    if (rangeSelect) {
+        rangeSelect.value = currentRange;
+        rangeSelect.addEventListener('change', () => {
+            setRangeUI(rangeSelect.value);
         });
     }
 });
@@ -139,16 +133,7 @@ function setRange(r) {
 function setRangeUI(r) {
     currentRange = r;
 
-    // Sync buttons
-    document.querySelectorAll('.btn-range')
-        .forEach(b => b.classList.remove('active'));
-    const activeBtn = document.querySelector(`.btn-range[data-range="${CSS.escape(r)}"]`);
-    if (activeBtn) activeBtn.classList.add('active');
-
-    // Sync mobile dropdown
-    if (rangeSelectMobile) {
-        rangeSelectMobile.value = r;
-    }
+    if (rangeSelect) rangeSelect.value = r;
 
     loadChart();
     startAutoRefresh();
@@ -359,14 +344,16 @@ function loadChart() {
    STATS
 ====================================================== */
 function updateStats(rx) {
+    const setCard = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    };
+
     if (!rx || rx.length === 0) {
-        document.getElementById('rxStats').innerHTML = `
-            Now <b>-40.00 dBm</b>
-            Avg <b>-40.00 dBm</b>
-            Min <b>-40.00 dBm</b>
-            Max <b>-40.00 dBm</b>
-            <span style="color:#ff6b6b">(Interface Down)</span>
-        `;
+        setCard('statNow', '—');
+        setCard('statAvg', '—');
+        setCard('statMin', '—');
+        setCard('statMax', '—');
         return;
     }
 
@@ -382,20 +369,13 @@ function updateStats(rx) {
         min = Math.min(...validValues);
         max = Math.max(...validValues);
     } else {
-        // Semua nilai -40 (interface selalu down)
         avg = -40;
         min = -40;
         max = -40;
     }
 
-    const downIndicator = now === -40 ?
-        ' <span style="color:#ff6b6b">(Down)</span>' :
-        '';
-
-    document.getElementById('rxStats').innerHTML = `
-        Now <b>${now.toFixed(2)} dBm</b>${downIndicator}
-        Avg <b>${avg.toFixed(2)} dBm</b>
-        Min <b>${min.toFixed(2)} dBm</b>
-        Max <b>${max.toFixed(2)} dBm</b>
-    `;
+    setCard('statNow', now.toFixed(2));
+    setCard('statAvg', avg.toFixed(2));
+    setCard('statMin', min.toFixed(2));
+    setCard('statMax', max.toFixed(2));
 }

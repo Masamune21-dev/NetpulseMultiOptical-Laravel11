@@ -457,4 +457,77 @@ final class ViewerDummyData
         return implode("\n", array_reverse($lines));
     }
 
+    // ── New dashboard widget data ────────────────────────────────────────────
+
+    public static function dashboardDeviceHealth(): array
+    {
+        return ['total' => 6, 'active' => 5, 'inactive' => 0, 'failed' => 1];
+    }
+
+    public static function dashboardAlertTrend(): array
+    {
+        $base = [
+            ['critical' => 0, 'warning' => 2, 'info' => 5],
+            ['critical' => 1, 'warning' => 3, 'info' => 4],
+            ['critical' => 0, 'warning' => 1, 'info' => 7],
+            ['critical' => 2, 'warning' => 4, 'info' => 3],
+            ['critical' => 0, 'warning' => 2, 'info' => 6],
+            ['critical' => 1, 'warning' => 1, 'info' => 4],
+            ['critical' => 0, 'warning' => 3, 'info' => 8],
+        ];
+        $out = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $day = date('Y-m-d', strtotime("-{$i} days"));
+            $idx = 6 - $i;
+            $out[] = [
+                'day'      => $day,
+                'label'    => date('d M', strtotime($day)),
+                'critical' => $base[$idx]['critical'],
+                'warning'  => $base[$idx]['warning'],
+                'info'     => $base[$idx]['info'],
+            ];
+        }
+        return $out;
+    }
+
+    public static function dashboardWorstPorts(): array
+    {
+        return [
+            (object)['device_name' => 'OLT-HIOSO-DEMO', 'ip_address' => '10.10.10.1', 'if_name' => 'sfp-sfpplus4', 'if_alias' => 'Client-4', 'rx_power' => -38.20, 'tx_power' => -2.10],
+            (object)['device_name' => 'RTR-CORE-DEMO',  'ip_address' => '10.10.0.1',  'if_name' => 'sfp-sfpplus2', 'if_alias' => 'Uplink-2', 'rx_power' => -33.50, 'tx_power' => -1.80],
+            (object)['device_name' => 'SW-AGG-DEMO',    'ip_address' => '10.10.0.2',  'if_name' => 'sfp-sfpplus6', 'if_alias' => 'Dist-6',   'rx_power' => -31.10, 'tx_power' => -2.40],
+            (object)['device_name' => 'EDGE-POP-DEMO',  'ip_address' => '10.10.0.4',  'if_name' => 'sfp-sfpplus1', 'if_alias' => 'WAN',      'rx_power' => -28.90, 'tx_power' => -1.50],
+            (object)['device_name' => 'OLT-HIOSO-DEMO', 'ip_address' => '10.10.10.1', 'if_name' => 'sfp-sfpplus7', 'if_alias' => 'Client-7', 'rx_power' => -26.40, 'tx_power' => -2.20],
+            (object)['device_name' => 'RTR-CORE-DEMO',  'ip_address' => '10.10.0.1',  'if_name' => 'sfp-sfpplus3', 'if_alias' => 'Peering',  'rx_power' => -24.80, 'tx_power' => -1.90],
+        ];
+    }
+
+    public static function dashboardRecentAlerts(): array
+    {
+        $now = time();
+        $events = [
+            ['interface_warning', 'warning',  'OLT-HIOSO-DEMO', 'sfp-sfpplus4', 'RX power degraded: -38.20 dBm (threshold: -35.00)'],
+            ['interface_down',    'critical', 'EDGE-POP-DEMO',  'sfp-sfpplus1', 'Interface down detected'],
+            ['interface_up',      'info',     'RTR-CORE-DEMO',  'sfp-sfpplus1', 'Interface restored to normal'],
+            ['interface_warning', 'warning',  'SW-AGG-DEMO',    'sfp-sfpplus6', 'RX power degraded: -31.10 dBm'],
+            ['device_down',       'critical', 'EDGE-POP-DEMO',  null,           'SNMP poll timeout after 3 retries'],
+            ['interface_up',      'info',     'OLT-HIOSO-DEMO', 'sfp-sfpplus7', 'Interface restored'],
+            ['interface_warning', 'warning',  'RTR-CORE-DEMO',  'sfp-sfpplus2', 'RX power low: -33.50 dBm'],
+            ['device_up',         'info',     'SW-AGG-DEMO',    null,           'Device back online'],
+        ];
+
+        $out = [];
+        foreach ($events as $idx => [$event_type, $severity, $device_name, $if_name, $message]) {
+            $out[] = (object)[
+                'event_type'  => $event_type,
+                'severity'    => $severity,
+                'device_name' => $device_name,
+                'if_name'     => $if_name,
+                'message'     => $message,
+                'created_at'  => date('Y-m-d H:i:s', $now - ($idx * 420)),
+            ];
+        }
+        return $out;
+    }
+
 }

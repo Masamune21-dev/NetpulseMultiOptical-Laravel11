@@ -24,9 +24,11 @@ class UsersApiController extends Controller
         $currentUserId = (int) ($user['id'] ?? 0);
         $users = User::query()
             ->select(['id', 'username', 'full_name', 'role', 'is_active', 'created_at'])
-            ->where('id', '!=', $currentUserId)
-            ->orderByDesc('id')
-            ->get();
+            ->orderBy('id')
+            ->get()
+            ->map(fn($u) => array_merge($u->toArray(), [
+                'is_current' => $u->id === $currentUserId,
+            ]));
 
         return response()->json($users);
     }

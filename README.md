@@ -1,34 +1,46 @@
 # NetPulse MultiOptical
 
-NetPulse MultiOptical is a network monitoring platform for optical/SFP links with:
-- Laravel web dashboard (NOC/ISP workflow)
-- Flutter Android app (version `2.0.0`)
-- Real-time alerting (Web UI logs, Telegram, FCM push)
-- Interactive network map (nodes, links, line status)
+NetPulse MultiOptical adalah platform monitoring jaringan optik/SFP untuk workflow NOC/ISP. Project ini berisi Laravel web dashboard, legacy web API, REST API v1 untuk Flutter mobile app, polling SNMP, alert log, Telegram alert, FCM push notification, dan interactive network map.
 
-## Main Features
+Dokumentasi lengkap ada di:
 
-- Device and interface monitoring (SNMP)
-- Optical metrics (RX/TX/Loss) with chart history
-- OLT monitoring (multi-PON)
-- Network map with link color states (`green/orange/red`)
-- Alert logs and push notifications
-- Role-based access (`admin`, `technician`, `viewer`)
+- [docs/NETPULSE_DOCUMENTATION.md](docs/NETPULSE_DOCUMENTATION.md)
+- [SNMP_HUAWEI_OPTICAL_OID_MAP.md](SNMP_HUAWEI_OPTICAL_OID_MAP.md)
 
-## Repository Structure
+## Fitur Utama
 
-- `app/` Laravel controllers/services/models
-- `resources/` Blade templates and frontend resources
-- `routes/` web + API routes
-- `mobile/` Flutter Android app
-- `scripts/` helper scripts (cron / telnet / etc)
+- Dashboard KPI device/interface/SFP/alert/user.
+- Monitoring optical RX/TX/loss dengan chart history.
+- Device management dan interface discovery via SNMP.
+- Support optical polling untuk MikroTik dan Huawei.
+- Network map dengan node, link, status link, path editing, dan detail interface.
+- Alert log Web UI, Telegram alert, dan FCM push notification.
+- Role-based access: `admin`, `technician`, `viewer`.
+- Flutter Android app versi `2.0.0+2`.
 
-## Backend Requirements
+## Stack
 
-- PHP `>= 8.2`
-- Composer
+- Laravel 11, PHP 8.2+
+- Blade, vanilla JavaScript, Chart.js, Leaflet
 - MySQL/MariaDB
-- SNMP tools/extensions
+- PHP SNMP extension
+- Flutter Android app
+- Firebase Cloud Messaging HTTP v1
+
+## Struktur Singkat
+
+| Path | Fungsi |
+| --- | --- |
+| `app/Http/Controllers` | Controller web dan legacy web API. |
+| `app/Http/Controllers/Api/V1` | REST API v1 untuk mobile. |
+| `app/Services/InterfaceDiscovery.php` | SNMP discovery, polling, alert. |
+| `app/Console/Commands/PollInterfaces.php` | Command `poll:interfaces`. |
+| `routes/web.php` | Web page dan legacy `/api/*`. |
+| `routes/api.php` | Mobile `/api/v1/*`. |
+| `resources/views` | Blade UI. |
+| `public/assets` | CSS/JS web UI. |
+| `mobile/` | Flutter Android app. |
+| `scripts/cron/laravel_schedule_run.sh` | Cron wrapper Laravel scheduler. |
 
 ## Backend Quick Start
 
@@ -37,60 +49,64 @@ composer install
 cp .env.example .env
 php artisan key:generate
 php artisan migrate
+php artisan serve
 ```
 
-Set database in `.env`:
+Contoh `.env` MySQL:
 
 ```env
+APP_NAME="NetPulse MultiOptical"
+APP_URL=http://localhost
+
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=netpulse
-DB_USERNAME=...
-DB_PASSWORD=...
+DB_USERNAME=netpulse
+DB_PASSWORD=secret
+
+SESSION_DRIVER=database
+QUEUE_CONNECTION=database
+CACHE_STORE=database
 ```
 
-Run app:
+Catatan instalasi database:
 
-```bash
-php artisan serve
+- Aplikasi ini dapat berjalan di atas database monitoring existing.
+- Tabel inti yang dibutuhkan: `users`, `snmp_devices`, `interfaces`, `interface_stats`, `settings`.
+- Migration repo membuat tabel pendukung seperti session/cache/job, alert log, API token, device token, dan lokasi user.
+- Detail schema dan deployment ada di [docs/NETPULSE_DOCUMENTATION.md](docs/NETPULSE_DOCUMENTATION.md#database).
+
+## Web UI
+
+Halaman utama:
+
+- `/login`
+- `/dashboard`
+- `/monitoring`
+- `/devices`
+- `/map`
+- `/users`
+- `/settings`
+
+Legacy API untuk web UI berada di `/api/*`, misalnya:
+
+- `GET /api/devices`
+- `GET /api/interfaces?device_id=1`
+- `GET /api/interface_chart?device_id=1&if_index=2&range=1h`
+- `GET|POST /api/settings`
+- `GET /api/alert_logs`
+
+## Mobile API v1
+
+Base path:
+
+```text
+/api/v1
 ```
 
-## OLT Config
+Endpoint utama:
 
-Create local OLT config (ignored by git):
-
-```bash
-cp config/olt_example.php config/olt.php
-```
-
-Collector commands:
-
-```bash
-php artisan olt:collect <olt-id>
-php artisan olt:collect-all
-```
-
-## Mobile App (Android)
-
-Current app version:
-- `versionName`: `2.0.0`
-- `versionCode`: `2`
-
-Build debug APK:
-
-```bash
-cd mobile
-flutter pub get
-flutter build apk --debug
-```
-
-Output:
-- `mobile/build/app/outputs/flutter-apk/app-debug.apk`
-
-## API (v1)
-
-Main auth + app endpoints:
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/logout`
 - `GET /api/v1/dashboard`
@@ -102,44 +118,90 @@ Main auth + app endpoints:
 - `GET /api/v1/alert-logs`
 - `POST /api/v1/device-token`
 - `POST /api/v1/location`
+- `GET|POST /api/v1/alert-preferences`
 
-## Push Notifications
+Authenticated endpoint memakai header:
 
-Mobile uses Firebase + local notifications.
-
-Required local file (ignored by git):
-- `mobile/android/app/google-services.json`
-
-Do not commit Firebase secret/service account files.
-
-## Git Ignore Policy (Updated)
-
-Already ignored:
-- `.env`, local config, cache, logs
-- `vendor/`, `node_modules/`, build artifacts
-- `config/olt.php`
-- `mobile/android/app/google-services.json`
-- `mobile/ios/Runner/GoogleService-Info.plist`
-- SQLite local DB files (`database/*.sqlite`)
-
-## Safe Push Checklist
-
-Before push to GitHub, run:
-
-```bash
-git status --short --ignored
-git check-ignore -v .env config/olt.php mobile/android/app/google-services.json
+```http
+Authorization: Bearer <token>
 ```
 
-Then commit only project files you want:
+## Scheduler dan Polling
 
-```bash
-git add -A
-git status --short
+Laravel scheduler menjalankan polling setiap menit:
+
+```php
+Schedule::command('poll:interfaces')->everyMinute()->withoutOverlapping();
 ```
 
-If any secret/local file appears staged, unstage it first.
+Command manual:
+
+```bash
+php artisan poll:interfaces
+php artisan poll:interfaces --device=1
+php artisan schedule:list
+```
+
+Cron production:
+
+```cron
+* * * * * /var/www/NetpulseMultiOptical/scripts/cron/laravel_schedule_run.sh
+```
+
+Log scheduler:
+
+```text
+storage/logs/schedule-run.log
+```
+
+## Settings Penting
+
+Settings disimpan di tabel `settings`:
+
+- Telegram: `bot_token`, `chat_id`
+- Alert channel: `alert_telegram_enabled`, `alert_webui_enabled`
+- Alert event: `alert_interface_down`, `alert_interface_up`, `alert_interface_warning`, `alert_device_down`, `alert_device_up`
+- RX threshold: `alert_rx_warning_high`, `alert_rx_warning_low`, `alert_rx_down_threshold`
+- Theme: `theme`, `primary_color`, `primary_soft`
+- Mobile push preference: `mobile_alert_pref_user_<id>`
+
+Untuk FCM backend, set env:
+
+```env
+FIREBASE_SERVICE_ACCOUNT_JSON=/path/to/firebase-service-account.json
+```
+
+## Mobile App
+
+```bash
+cd mobile
+flutter pub get
+flutter build apk --debug
+```
+
+Output:
+
+```text
+mobile/build/app/outputs/flutter-apk/app-debug.apk
+```
+
+Firebase Android file lokal:
+
+```text
+mobile/android/app/google-services.json
+```
+
+File secret Firebase tidak boleh di-commit.
+
+## Verifikasi
+
+```bash
+php artisan route:list
+php artisan schedule:list
+php artisan test
+```
 
 ## License
 
 MIT
+

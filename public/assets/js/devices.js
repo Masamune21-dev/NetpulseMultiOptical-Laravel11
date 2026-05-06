@@ -56,23 +56,47 @@ function loadDevices() {
             tb.innerHTML = '';
 
             data.forEach(d => {
+                const snmpClass = d.snmp_version === '3' ? 'snmp-v3' : 'snmp-v2c';
+                const snmpLabel = d.snmp_version === '3' ? 'v3' : 'v2c';
+                const auth = d.snmp_version === '2c' ? (d.community || '-') : (d.snmp_user || '-');
+
+                let statusClass = 'status-inactive';
+                let statusLabel = 'Inactive';
+                if (d.is_active == 1 && d.last_status === 'OK') {
+                    statusClass = 'status-ok';
+                    statusLabel = 'OK';
+                } else if (d.last_status === 'FAILED') {
+                    statusClass = 'status-failed';
+                    statusLabel = 'FAILED';
+                } else if (d.is_active == 1) {
+                    statusClass = 'status-ok';
+                    statusLabel = d.last_status || 'Active';
+                }
+
                 tb.innerHTML += `
                 <tr>
-                    <td>${d.device_name}</td>
-                    <td>${d.ip_address}</td>
-                    <td>v${d.snmp_version}</td>
-                    <td>${d.snmp_version === '2c' ? d.community : (d.snmp_user || '-')}</td>
-                    <td>${d.last_status ?? '-'}</td>
-                    <td class="actions-cell">
+                    <td>
+                        <div class="dev-name-cell">
+                            <div class="dev-icon"><i class="fas fa-server"></i></div>
+                            <div>
+                                <div class="dev-name">${d.device_name}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span style="font-family:monospace;font-size:0.82rem">${d.ip_address}</span></td>
+                    <td style="text-align:center"><span class="snmp-badge ${snmpClass}">${snmpLabel}</span></td>
+                    <td style="text-align:center;font-size:0.82rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${auth}</td>
+                    <td style="text-align:center"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                    <td class="actions-cell" style="text-align:center">
                         <div class="action-buttons">
-                            <button class="btn btn-icon btn-edit action-edit" onclick='editDevice(${JSON.stringify(d)})'>
-                            <i class="fas fa-edit"></i>
+                            <button class="btn btn-icon btn-edit action-edit" onclick='editDevice(${JSON.stringify(d)})' title="Edit">
+                                <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn btn-icon btn-info" onclick="testSNMP(${d.id})">
-                            <i class="fas fa-plug"></i>
+                            <button class="btn btn-icon btn-info" onclick="testSNMP(${d.id})" title="Test SNMP">
+                                <i class="fas fa-plug"></i>
                             </button>
-                            <button class="btn btn-icon btn-danger action-delete" onclick="deleteDevice(${d.id})">
-                            <i class="fas fa-trash"></i>
+                            <button class="btn btn-icon btn-danger action-delete" onclick="deleteDevice(${d.id})" title="Delete">
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </td>

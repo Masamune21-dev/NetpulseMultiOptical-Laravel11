@@ -96,24 +96,61 @@ function renderUsersTable(users) {
     users.sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
     users.forEach(u => {
-        // ... kode yang ada tetap ...
-        const statusClass = u.is_active == 1 ? 'badge-success' : 'badge-secondary';
-        const statusText = u.is_active == 1 ? 'Active' : 'Disabled';
+        const roleClass = u.role === 'admin' ? 'role-admin'
+            : u.role === 'technician' ? 'role-technician'
+            : 'role-viewer';
+
+        const roleIcon = u.role === 'admin' ? 'fa-shield-halved'
+            : u.role === 'technician' ? 'fa-screwdriver-wrench'
+            : 'fa-eye';
+
+        const avatarClass = u.role === 'admin' ? 'usr-avatar--admin'
+            : u.role === 'technician' ? 'usr-avatar--tech'
+            : 'usr-avatar--viewer';
+
+        const initials = (u.full_name || u.username || '?')
+            .split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+
+        const statusDotClass = u.is_active == 1 ? 'usr-status-dot--on' : 'usr-status-dot--off';
+        const statusTextClass = u.is_active == 1 ? 'usr-status--active' : 'usr-status--inactive';
+        const statusLabel = u.is_active == 1 ? 'Active' : 'Disabled';
+
+        const youBadge = u.is_current
+            ? `<span style="font-size:0.6rem;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:99px;background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);margin-left:6px">YOU</span>`
+            : '';
 
         const row = document.createElement('tr');
+        if (u.is_current) row.style.background = 'rgba(99,102,241,.05)';
+
         row.innerHTML = `
-            <td><code>${u.id}</code></td>
-            <td><strong>${escapeHtml(u.username)}</strong></td>
-            <td>${escapeHtml(u.full_name)}</td>
-            <td><span class="role-badge ${u.role}">${u.role}</span></td>
-            <td><span class="badge ${statusClass}">${statusText}</span></td>
-            <td class="actions-cell">
+            <td style="text-align:center"><code>${u.id}</code></td>
+            <td>
+                <div class="usr-cell">
+                    <div class="usr-avatar ${avatarClass}">${initials}</div>
+                    <div>
+                        <div class="usr-name">${escapeHtml(u.username)}${youBadge}</div>
+                        <div class="usr-fullname">${escapeHtml(u.full_name || '')}</div>
+                    </div>
+                </div>
+            </td>
+            <td style="text-align:center">
+                <span class="role-badge ${roleClass}">
+                    <i class="fas ${roleIcon}"></i> ${u.role}
+                </span>
+            </td>
+            <td style="text-align:center">
+                <span class="usr-status ${statusTextClass}">
+                    <span class="usr-status-dot ${statusDotClass}"></span>
+                    ${statusLabel}
+                </span>
+            </td>
+            <td class="actions-cell" style="text-align:center">
                 <div class="action-buttons">
-                    <button class="btn btn-icon btn-edit action-edit" onclick='editUser(${JSON.stringify(u)})'>
+                    <button class="btn btn-icon btn-edit action-edit" onclick='editUser(${JSON.stringify(u)})' title="Edit">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-icon btn-danger action-delete" 
-                        onclick="deleteUser(${u.id}, '${escapeHtml(u.username)}')">
+                    <button class="btn btn-icon btn-danger action-delete"
+                        onclick="deleteUser(${u.id}, '${escapeHtml(u.username)}')" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
