@@ -5,7 +5,6 @@ NetPulse MultiOptical adalah platform monitoring jaringan optik/SFP untuk workfl
 Dokumentasi lengkap ada di:
 
 - [docs/NETPULSE_DOCUMENTATION.md](docs/NETPULSE_DOCUMENTATION.md)
-- [SNMP_HUAWEI_OPTICAL_OID_MAP.md](SNMP_HUAWEI_OPTICAL_OID_MAP.md)
 
 ## Tampilan Login
 
