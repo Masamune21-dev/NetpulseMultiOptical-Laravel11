@@ -7,6 +7,10 @@ Dokumentasi lengkap ada di:
 - [docs/NETPULSE_DOCUMENTATION.md](docs/NETPULSE_DOCUMENTATION.md)
 - [SNMP_HUAWEI_OPTICAL_OID_MAP.md](SNMP_HUAWEI_OPTICAL_OID_MAP.md)
 
+## Tampilan Login
+
+![Login page NetPulse MultiOptical](public/assets/img/loginpage.png)
+
 ## Fitur Utama
 
 - Dashboard KPI device/interface/SFP/alert/user.
@@ -204,4 +208,3 @@ php artisan test
 ## License
 
 MIT
-

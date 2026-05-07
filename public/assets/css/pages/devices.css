@@ -1,0 +1,179 @@
+/* Devices page */
+.dev-card,
+.mon-discover-card {
+    background: var(--surface);
+    border: 3px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.dev-card-head,
+.mon-discover-head {
+    align-items: center;
+    background: var(--primary);
+    border-bottom: 3px solid var(--border);
+    color: #050505;
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 16px;
+}
+
+.dev-card-head h3,
+.mon-discover-head h3 {
+    align-items: center;
+    color: #050505;
+    display: flex;
+    font-size: 0.95rem;
+    gap: 9px;
+    text-transform: uppercase;
+}
+
+.mon-discover-head {
+    align-items: flex-start;
+    background: var(--accent);
+    display: grid;
+    gap: 4px;
+}
+
+.mon-discover-head p {
+    color: #050505;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.dev-table-wrap {
+    overflow-x: auto;
+}
+
+.dev-name-cell {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+}
+
+.dev-icon {
+    align-items: center;
+    background: var(--accent);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: #050505;
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 34px;
+    justify-content: center;
+    width: 34px;
+}
+
+.dev-name {
+    color: var(--text);
+    font-weight: 900;
+}
+
+.dev-ip,
+.iface-comment {
+    color: var(--text-soft);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.status-badge::before {
+    background: currentColor;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    content: "";
+    height: 9px;
+    width: 9px;
+}
+
+.mon-discover-controls {
+    align-items: end;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: minmax(240px, 1fr) auto;
+    padding: 16px;
+}
+
+.mon-discover-controls .form-group {
+    margin: 0;
+}
+
+.discover-btn {
+    margin: 0;
+    min-height: 42px;
+    white-space: nowrap;
+}
+
+.monitoring-content {
+    border-top: 3px solid var(--border);
+    min-height: 280px;
+    padding: 16px;
+}
+
+.monitoring-placeholder {
+    align-items: center;
+    color: var(--text-soft);
+    display: grid;
+    font-weight: 900;
+    gap: 10px;
+    justify-items: center;
+    min-height: 220px;
+    text-align: center;
+}
+
+.monitoring-placeholder i {
+    background: var(--primary);
+    border: 3px solid var(--border);
+    border-radius: 50%;
+    color: #050505;
+    display: grid;
+    font-size: 1.6rem;
+    height: 64px;
+    place-items: center;
+    width: 64px;
+}
+
+.interface-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.interface-table th,
+.interface-table td {
+    border-bottom: 3px solid var(--border);
+    padding: 11px 12px;
+}
+
+.interface-table th {
+    background: var(--primary);
+    color: #050505;
+    font-size: 0.7rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.power-tx,
+.power-rx {
+    font-weight: 900;
+}
+
+.power-tx.good,
+.power-rx.good { color: var(--success); }
+.power-tx.warning,
+.power-rx.warning { color: var(--warning); }
+.power-tx.critical,
+.power-rx.critical { color: var(--danger); }
+
+.modal-box .form-group label {
+    font-size: 0.75rem;
+}
+
+@media (max-width: 760px) {
+    .mon-discover-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .discover-btn {
+        width: 100%;
+    }
+}

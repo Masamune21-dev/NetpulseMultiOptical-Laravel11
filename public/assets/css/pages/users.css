@@ -1,0 +1,105 @@
+/* Users page */
+.usr-card {
+    background: var(--surface);
+    border: 3px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.usr-card-head {
+    align-items: center;
+    background: var(--primary);
+    border-bottom: 3px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 16px;
+}
+
+.usr-card-head h3 {
+    align-items: center;
+    color: #050505;
+    display: flex;
+    font-size: 0.95rem;
+    gap: 9px;
+    text-transform: uppercase;
+}
+
+.usr-table-wrap {
+    overflow-x: auto;
+}
+
+.usr-cell {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+}
+
+.usr-avatar {
+    align-items: center;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    color: #050505;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 0.76rem;
+    font-weight: 900;
+    height: 38px;
+    justify-content: center;
+    text-transform: uppercase;
+    width: 38px;
+}
+
+.usr-avatar--admin { background: var(--primary); }
+.usr-avatar--tech { background: var(--accent); }
+.usr-avatar--viewer { background: var(--accent-2); }
+
+.usr-name {
+    color: var(--text);
+    font-weight: 900;
+}
+
+.usr-fullname {
+    color: var(--text-soft);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.usr-status {
+    align-items: center;
+    display: inline-flex;
+    font-size: 0.76rem;
+    font-weight: 900;
+    gap: 7px;
+}
+
+.usr-status-dot {
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    height: 11px;
+    width: 11px;
+}
+
+.usr-status-dot--on { background: var(--accent-2); }
+.usr-status-dot--off { background: var(--text-muted); }
+.usr-status--active { color: var(--success); }
+.usr-status--inactive { color: var(--text-muted); }
+
+.password-strength {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    height: 10px;
+    margin-top: 8px;
+}
+
+.password-strength-meter {
+    background: var(--primary-soft);
+    height: 100%;
+    width: 0;
+}
+
+@media (max-width: 760px) {
+    .usr-fullname {
+        display: none;
+    }
+}

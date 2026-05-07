@@ -151,7 +151,7 @@ function initChart() {
             labels: [],
             datasets: [{
                 data: [],
-                borderColor: '#6366f1',
+                borderColor: '#ffe14a',
                 backgroundColor: 'rgba(255,255,255,0.06)',
                 borderWidth: 2,
                 tension: 0.25,
@@ -316,7 +316,7 @@ function loadChart() {
 
             const primaryColor = getComputedStyle(document.documentElement)
                 .getPropertyValue('--primary')
-                .trim() || '#6366f1';
+                .trim() || '#ffe14a';
 
             chart.data.labels = labels;
             chart.data.datasets[0].data = rxData;

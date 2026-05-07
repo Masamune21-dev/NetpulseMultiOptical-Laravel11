@@ -86,10 +86,10 @@ function loadSettings() {
             const primaryHex = document.getElementById('primaryColorHex');
             const softHex = document.getElementById('primarySoftHex');
 
-            if (primaryInput) primaryInput.value = d.primary_color || '#6366f1';
-            if (softInput) softInput.value = d.primary_soft || '#8b5cf6';
-            if (primaryHex) primaryHex.textContent = (primaryInput && primaryInput.value) || '#6366f1';
-            if (softHex) softHex.textContent = (softInput && softInput.value) || '#8b5cf6';
+            if (primaryInput) primaryInput.value = d.primary_color || '#ffe14a';
+            if (softInput) softInput.value = d.primary_soft || '#ff5c8a';
+            if (primaryHex) primaryHex.textContent = (primaryInput && primaryInput.value) || '#ffe14a';
+            if (softHex) softHex.textContent = (softInput && softInput.value) || '#ff5c8a';
 
             if (primaryInput && softInput) {
                 applyThemeColors(primaryInput.value, softInput.value, preview);
@@ -303,8 +303,8 @@ function saveTheme() {
     const theme = document.querySelector('input[name="theme"]:checked').value;
     const primaryInput = document.getElementById('primary_color');
     const softInput = document.getElementById('primary_soft');
-    const primaryColor = primaryInput ? primaryInput.value : '#6366f1';
-    const primarySoft = softInput ? softInput.value : '#8b5cf6';
+    const primaryColor = primaryInput ? primaryInput.value : '#ffe14a';
+    const primarySoft = softInput ? softInput.value : '#ff5c8a';
 
     document.body.dataset.theme = theme; // 🔥 langsung apply
     applyThemeColors(primaryColor, primarySoft, document.getElementById('themeGradientPreview'));
@@ -333,10 +333,6 @@ function applyThemeColors(primaryColor, primarySoft, previewEl) {
         '--primary-gradient',
         `linear-gradient(135deg, ${primaryColor} 0%, ${primarySoft} 100%)`
     );
-    document.documentElement.style.setProperty(
-        '--sidebar',
-        `linear-gradient(160deg, ${primaryColor} 0%, ${primarySoft} 55%, ${primaryColor} 100%)`
-    );
     if (previewEl) {
         previewEl.style.background = `linear-gradient(135deg, ${primaryColor}, ${primarySoft})`;
     }
@@ -344,8 +340,8 @@ function applyThemeColors(primaryColor, primarySoft, previewEl) {
 
 function resetThemeColors() {
     if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
-    const primary = '#6366f1';
-    const soft = '#8b5cf6';
+    const primary = '#ffe14a';
+    const soft = '#ff5c8a';
     const primaryInput = document.getElementById('primary_color');
     const softInput = document.getElementById('primary_soft');
     if (primaryInput) primaryInput.value = primary;
