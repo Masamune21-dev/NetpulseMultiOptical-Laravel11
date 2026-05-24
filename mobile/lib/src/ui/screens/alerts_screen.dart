@@ -81,7 +81,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       final fields = [
                         DropdownButtonFormField<String>(
                           isExpanded: true,
-                          value: _severity,
+                          initialValue: _severity,
                           items: const [
                             DropdownMenuItem(value: 'all', child: Text('All severity')),
                             DropdownMenuItem(value: 'info', child: Text('Info')),
@@ -98,7 +98,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                         ),
                         DropdownButtonFormField<String>(
                           isExpanded: true,
-                          value: _type,
+                          initialValue: _type,
                           items: const [
                             DropdownMenuItem(value: 'all', child: Text('All type')),
                             DropdownMenuItem(value: 'optical', child: Text('Optical')),

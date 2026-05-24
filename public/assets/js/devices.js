@@ -53,9 +53,9 @@ function loadDevices() {
         .then(r => r.ok ? r.json() : Promise.reject(r))
         .then(data => {
             const tb = document.querySelector('#deviceTable tbody');
-            tb.innerHTML = '';
+            if (!tb) return;
 
-            data.forEach(d => {
+            const html = data.map(d => {
                 const snmpClass = d.snmp_version === '3' ? 'snmp-v3' : 'snmp-v2c';
                 const snmpLabel = d.snmp_version === '3' ? 'v3' : 'v2c';
                 const auth = d.snmp_version === '2c' ? (d.community || '-') : (d.snmp_user || '-');
@@ -73,7 +73,7 @@ function loadDevices() {
                     statusLabel = d.last_status || 'Active';
                 }
 
-                tb.innerHTML += `
+                return `
                 <tr>
                     <td>
                         <div class="dev-name-cell">
@@ -101,7 +101,9 @@ function loadDevices() {
                         </div>
                     </td>
                 </tr>`;
-            });
+            }).join('');
+
+            tb.innerHTML = html;
         })
         .catch(() => {
             showNotification('Gagal memuat device', 'error');
@@ -216,16 +218,17 @@ function loadMonitoringDevices() {
             const sel = document.getElementById('monitorDeviceSelect');
             if (!sel) return;
 
-            sel.innerHTML = '<option value="">-- Pilih Device --</option>';
-
+            const prevValue = sel.value;
+            const options = ['<option value="">-- Pilih Device --</option>'];
             data.forEach(d => {
                 if (d.is_active == 1) {
-                    sel.innerHTML += `
-                        <option value="${d.id}">
-                            ${d.device_name} (${d.ip_address})
-                        </option>`;
+                    options.push(`<option value="${d.id}">${d.device_name} (${d.ip_address})</option>`);
                 }
             });
+            sel.innerHTML = options.join('');
+            if (prevValue && sel.querySelector(`option[value="${prevValue}"]`)) {
+                sel.value = prevValue;
+            }
         })
         .catch(() => {
             showNotification('Gagal memuat monitoring devices', 'error');

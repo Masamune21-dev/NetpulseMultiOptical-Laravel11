@@ -54,27 +54,33 @@ class MonitoringApiController extends Controller
             return response()->json(ViewerDummyData::interfaceChart($deviceId, $ifIndex, (string) $range));
         }
 
-        $interval = match ($range) {
-            '1h' => '1 HOUR',
-            '1d' => '24 HOUR',
-            '3d' => '72 HOUR',
-            '7d' => '7 DAY',
-            '30d' => '30 DAY',
-            '1y' => '1 YEAR',
-            default => '1 HOUR',
+        [$interval, $bucketExpr] = match ($range) {
+            '1h'  => ['1 HOUR', null],
+            '1d'  => ['24 HOUR', null],
+            '3d'  => ['72 HOUR', null],
+            '7d'  => ['7 DAY', null],
+            '30d' => ['30 DAY', "DATE_FORMAT(DATE_SUB(created_at, INTERVAL MOD(MINUTE(created_at), 15) MINUTE), '%Y-%m-%d %H:%i:00')"],
+            '1y'  => ['1 YEAR', "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')"],
+            default => ['1 HOUR', null],
         };
 
-        $sql = str_contains($interval, 'YEAR') || str_contains($interval, 'DAY')
-            ? "SELECT created_at, tx_power, rx_power, loss
-               FROM interface_stats
-               WHERE device_id = ? AND if_index = ?
-                 AND created_at >= DATE_SUB(NOW(), INTERVAL $interval)
-               ORDER BY created_at ASC"
-            : "SELECT created_at, tx_power, rx_power, loss
-               FROM interface_stats
-               WHERE device_id = ? AND if_index = ?
-                 AND created_at >= NOW() - INTERVAL $interval
-               ORDER BY created_at ASC";
+        if ($bucketExpr === null) {
+            $sql = "SELECT created_at, tx_power, rx_power, loss
+                    FROM interface_stats
+                    WHERE device_id = ? AND if_index = ?
+                      AND created_at >= NOW() - INTERVAL $interval
+                    ORDER BY created_at ASC";
+        } else {
+            $sql = "SELECT $bucketExpr AS created_at,
+                           AVG(tx_power) AS tx_power,
+                           AVG(rx_power) AS rx_power,
+                           AVG(loss)     AS loss
+                    FROM interface_stats
+                    WHERE device_id = ? AND if_index = ?
+                      AND created_at >= NOW() - INTERVAL $interval
+                    GROUP BY $bucketExpr
+                    ORDER BY created_at ASC";
+        }
 
         $rows = DB::select($sql, [$deviceId, $ifIndex]);
 

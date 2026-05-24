@@ -63,7 +63,7 @@ class _LocationScreenState extends State<LocationScreen> {
                   Text(
                     'App akan meminta izin lokasi, lalu kirim koordinat ke server.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurface.withOpacity(0.7),
+                          color: scheme.onSurface.withValues(alpha: 0.7),
                         ),
                   ),
                   const SizedBox(height: 14),

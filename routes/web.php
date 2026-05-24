@@ -6,6 +6,8 @@ use App\Http\Controllers\DevicesApiController;
 use App\Http\Controllers\DevicesController;
 use App\Http\Controllers\DiscoverInterfacesController;
 use App\Http\Controllers\InterfacesApiController;
+use App\Http\Controllers\InterfacesController;
+use App\Http\Controllers\InterfacesListApiController;
 use App\Http\Controllers\MapApiController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\MonitoringApiController;
@@ -29,6 +31,7 @@ Route::get('/logout', [AuthController::class, 'logout']);
 
 Route::middleware(['legacy.auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/api/dashboard/summary', [DashboardController::class, 'summary']);
 
     Route::get('/monitoring', [MonitoringController::class, 'index']);
 
@@ -53,7 +56,11 @@ Route::middleware(['legacy.auth'])->group(function () {
     Route::delete('/api/devices', [DevicesApiController::class, 'destroy'])
         ->middleware('legacy.role:admin');
 
+    Route::get('/interfaces', [InterfacesController::class, 'index']);
+
     Route::get('/api/interfaces', [InterfacesApiController::class, 'index']);
+    Route::get('/api/interfaces/all', [InterfacesListApiController::class, 'index']);
+    Route::get('/api/interfaces/traffic_history', [InterfacesListApiController::class, 'trafficHistory']);
 
     Route::get('/api/monitoring_devices', [MonitoringApiController::class, 'devices']);
     Route::get('/api/monitoring_interfaces', [MonitoringApiController::class, 'interfaces']);
@@ -70,6 +77,15 @@ Route::middleware(['legacy.auth'])->group(function () {
         ->middleware('legacy.role:admin,technician,viewer');
     Route::post('/api/telegram_test', [SettingsApiController::class, 'telegramTest'])
         ->middleware('legacy.role:admin');
+    Route::get('/api/mobile_devices', [SettingsApiController::class, 'mobileDevices'])
+        ->middleware('legacy.role:admin');
+    Route::get('/api/mobile_push_targets', [SettingsApiController::class, 'mobilePushTargets'])
+        ->middleware('legacy.role:admin');
+    Route::post('/api/mobile_push_send', [SettingsApiController::class, 'sendMobilePush'])
+        ->middleware('legacy.role:admin');
+    Route::delete('/api/mobile_devices/{id}', [SettingsApiController::class, 'revokeMobileDevice'])
+        ->middleware('legacy.role:admin')
+        ->whereNumber('id');
     Route::get('/api/logs', [SettingsApiController::class, 'logs'])
         ->middleware('legacy.role:admin,viewer');
 

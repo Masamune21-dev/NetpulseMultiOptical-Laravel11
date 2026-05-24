@@ -83,6 +83,17 @@
                         <span class="slider"></span>
                     </div>
                 </label>
+
+                <label class="switch-row">
+                    <div class="switch-label">
+                        <div class="switch-title">Mobile Push Alert</div>
+                        <div class="switch-sub">Kirim push notification ke aplikasi mobile yang terdaftar (override preferensi per-user saat OFF).</div>
+                    </div>
+                    <div class="switch">
+                        <input type="checkbox" id="alert_mobile_enabled">
+                        <span class="slider"></span>
+                    </div>
+                </label>
             </div>
 
             <div class="alert-section">
@@ -183,6 +194,58 @@
             </button>
         </div>
     </div>
+
+    <div class="card" style="margin-top: 16px;">
+        <h3>
+            <i class="fas fa-paper-plane"></i>
+            Send Push Notification
+        </h3>
+
+        <div class="form-group">
+            <label>Target</label>
+            <select id="pushTarget">
+                <option value="all" data-i18n="all-devices">All Devices (0)</option>
+            </select>
+            <div class="help" id="pushTargetHelp">Pilih ke siapa pesan ini akan dikirim.</div>
+        </div>
+
+        <div class="form-group">
+            <label>Title</label>
+            <input id="pushTitle" type="text" maxlength="120" placeholder="Judul notifikasi (max 120 char)">
+        </div>
+
+        <div class="form-group">
+            <label>Message</label>
+            <textarea id="pushBody" rows="3" maxlength="1000" placeholder="Isi pesan yang akan muncul di notifikasi mobile..."></textarea>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn action-edit" onclick="sendMobilePush()">
+                <i class="fas fa-paper-plane"></i> Send Notification
+            </button>
+            <button class="btn btn-outline" onclick="refreshMobilePushTargets()">
+                <i class="fas fa-rotate"></i> Refresh Targets
+            </button>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+        <h3>
+            <i class="fas fa-mobile-screen-button"></i>
+            Mobile Devices (Push Targets)
+        </h3>
+
+        <div class="form-group">
+            <label>Aplikasi mobile yang terdaftar untuk menerima alert</label>
+            <div class="alert-log-box" id="mobileDeviceBox">Loading...</div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="refreshMobileDevices()">
+                <i class="fas fa-rotate"></i> Refresh
+            </button>
+        </div>
+    </div>
 </div>
 
 <div class="tab-content" id="theme">
@@ -214,22 +277,36 @@
             </div>
 
             <div class="theme-section">
-                <div class="theme-section-title">Gradient Colors</div>
-                <div class="theme-color-row">
-                    <div class="theme-color-picker">
-                        <label>Primary</label>
-                        <div class="picker-field">
-                            <input id="primary_color" type="color" value="#ffe14a">
-                            <span id="primaryColorHex">#ffe14a</span>
+                <div class="theme-section-title">Colors</div>
+                <div class="theme-color-grid" id="themeColorGrid">
+                    @php
+                        $themeColors = [
+                            ['key' => 'primary_color',  'label' => 'Primary',      'default' => '#ffe14a'],
+                            ['key' => 'primary_soft',   'label' => 'Primary Soft', 'default' => '#ff5c8a'],
+                            ['key' => 'accent_color',   'label' => 'Accent',       'default' => '#00d1ff'],
+                            ['key' => 'accent_2_color', 'label' => 'Accent 2',     'default' => '#70f570'],
+                            ['key' => 'danger_color',   'label' => 'Danger',       'default' => '#ef4444'],
+                            ['key' => 'warning_color',  'label' => 'Warning',      'default' => '#f59e0b'],
+                        ];
+                    @endphp
+                    @foreach ($themeColors as $c)
+                        <div class="theme-color-picker">
+                            <label>{{ $c['label'] }}</label>
+                            <div class="picker-field">
+                                <input type="color"
+                                       class="theme-color-swatch"
+                                       data-key="{{ $c['key'] }}"
+                                       value="{{ $c['default'] }}">
+                                <input type="text"
+                                       class="theme-color-hex"
+                                       data-key="{{ $c['key'] }}"
+                                       value="{{ $c['default'] }}"
+                                       maxlength="7"
+                                       spellcheck="false"
+                                       placeholder="#rrggbb">
+                            </div>
                         </div>
-                    </div>
-                    <div class="theme-color-picker">
-                        <label>Secondary</label>
-                        <div class="picker-field">
-                            <input id="primary_soft" type="color" value="#3d3d3d">
-                            <span id="primarySoftHex">#ff5c8a</span>
-                        </div>
-                    </div>
+                    @endforeach
                 </div>
 
                 <div class="theme-preview">
@@ -237,11 +314,13 @@
                         <div class="preview-title">Preview</div>
                         <div class="preview-sub">Buttons, sidebar & accents</div>
                     </div>
-                    <div id="themeGradientPreview" class="preview-gradient"></div>
                     <div class="preview-samples">
                         <div class="preview-pill">Primary</div>
                         <div class="preview-pill outline">Outline</div>
                         <div class="preview-chip">Sidebar</div>
+                        <div class="preview-chip preview-chip-accent2">Up</div>
+                        <div class="preview-chip preview-chip-danger">Down</div>
+                        <div class="preview-chip preview-chip-warning">Warning</div>
                     </div>
                 </div>
             </div>
@@ -306,7 +385,26 @@
             var matches = btn.getAttribute('onclick') && btn.getAttribute('onclick').includes("'" + id + "'");
             btn.classList.toggle('active', matches);
         });
+
+        if (id === 'alert') {
+            if (typeof refreshAlertLogs === 'function') refreshAlertLogs();
+            if (typeof refreshMobileDevices === 'function') refreshMobileDevices();
+            if (typeof refreshMobilePushTargets === 'function') refreshMobilePushTargets();
+        }
+        if (id === 'logs' && typeof refreshSecurityLogs === 'function') {
+            refreshSecurityLogs();
+        }
     };
+
+    // Prefetch logs on initial page load so the tabs are populated the moment
+    // the user opens them (no more lingering "Loading..." until the first
+    // 15s auto-refresh tick or a manual click).
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof refreshAlertLogs === 'function') refreshAlertLogs();
+        if (typeof refreshSecurityLogs === 'function') refreshSecurityLogs();
+        if (typeof refreshMobileDevices === 'function') refreshMobileDevices();
+        if (typeof refreshMobilePushTargets === 'function') refreshMobilePushTargets();
+    });
 })();
 </script>
 @endpush

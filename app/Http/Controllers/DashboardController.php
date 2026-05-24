@@ -11,9 +11,36 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        $data = $this->collectData($request);
+        return view('dashboard.index', $data);
+    }
+
+    public function summary(Request $request)
+    {
+        $data = $this->collectData($request);
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'device_count'      => (int) $data['deviceCount'],
+                'device_total'      => (int) ($data['deviceHealth']['total'] ?? 0),
+                'interface_count'   => (int) $data['ifCount'],
+                'if_up_count'       => (int) $data['ifUpCount'],
+                'if_down_count'     => (int) $data['ifDownCount'],
+                'sfp_count'         => (int) $data['sfpCount'],
+                'bad_optical_count' => (int) $data['badOptical'],
+                'user_count'        => (int) $data['userCount'],
+                'device_health'     => $data['deviceHealth'],
+                'worst_ports'       => collect($data['worstPorts'])->map(fn($p) => (array)$p)->values()->all(),
+                'recent_alerts'     => collect($data['recentAlerts'])->map(fn($a) => (array)$a)->values()->all(),
+            ],
+        ]);
+    }
+
+    private function collectData(Request $request): array
+    {
         if (ViewerDummyData::isViewer($request)) {
             $c = ViewerDummyData::dashboardCounts();
-            return view('dashboard.index', [
+            return [
                 'pageTitle'     => 'Dashboard',
                 'deviceCount'   => $c['deviceCount'],
                 'ifCount'       => $c['ifCount'],
@@ -26,7 +53,7 @@ class DashboardController extends Controller
                 'recentAlerts'  => ViewerDummyData::dashboardRecentAlerts(),
                 'ifUpCount'     => 28,
                 'ifDownCount'   => 4,
-            ]);
+            ];
         }
 
         // ── Base KPI counts ─────────────────────────────────────────────────
@@ -43,13 +70,12 @@ class DashboardController extends Controller
                 SELECT COUNT(*) AS bad_optical_count
                 FROM interfaces i
                 WHERE i.is_sfp = 1
-                  AND i.tx_power IS NOT NULL
                   AND i.oper_status IS NOT NULL
                   AND i.oper_status <> 1
                   AND EXISTS (
                       SELECT 1 FROM alert_logs al
                       WHERE al.device_id = i.device_id
-                        AND al.if_index  = i.if_index
+                        AND al.if_name   = i.if_name
                         AND al.event_type = 'interface_down'
                   )
             ");
@@ -154,7 +180,7 @@ class DashboardController extends Controller
             ");
         }
 
-        return view('dashboard.index', [
+        return [
             'pageTitle'    => 'Dashboard',
             'deviceCount'  => (int) ($counts->device_count    ?? 0),
             'ifCount'      => (int) ($counts->interface_count ?? 0),
@@ -167,6 +193,6 @@ class DashboardController extends Controller
             'alertTrend'   => $alertTrend,
             'worstPorts'   => $worstPorts,
             'recentAlerts' => $recentAlerts,
-        ]);
+        ];
     }
 }

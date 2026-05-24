@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (document.hidden) return;
             const modalOpen = document.getElementById('userModal')?.style?.display === 'flex';
             if (modalOpen) return;
-            loadUsers();
+            loadUsers(true);
         }, { minIntervalMs: 30000 });
     }
 });
@@ -46,14 +46,16 @@ function initializeEventListeners() {
 // ===============================
 // LOAD USERS
 // ===============================
-function loadUsers() {
+function loadUsers(silent = false) {
     const tbody = document.querySelector('#userTable tbody');
     if (!tbody) {
         console.error('User table body not found');
         return;
     }
-    
-    tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading users...</td></tr>';
+
+    if (!silent && !tbody.dataset.loaded) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading users...</td></tr>';
+    }
 
     fetch('api/users')
         .then(response => {
@@ -64,22 +66,28 @@ function loadUsers() {
         })
         .then(data => {
             if (data.error) {
-                showAlert('error', data.error);
-                tbody.innerHTML = '<tr><td colspan="6" class="error">Error loading users</td></tr>';
+                if (!silent) showAlert('error', data.error);
+                if (!tbody.dataset.loaded) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="error">Error loading users</td></tr>';
+                }
                 return;
             }
 
             if (!data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="empty">No users found</td></tr>';
+                tbody.dataset.loaded = '1';
                 return;
             }
 
             renderUsersTable(data);
+            tbody.dataset.loaded = '1';
         })
         .catch(error => {
             console.error('Error loading users:', error);
-            tbody.innerHTML = `<tr><td colspan="6" class="error">Error: ${error.message}</td></tr>`;
-            showAlert('error', `Failed to load users: ${error.message}`);
+            if (!tbody.dataset.loaded) {
+                tbody.innerHTML = `<tr><td colspan="6" class="error">Error: ${error.message}</td></tr>`;
+            }
+            if (!silent) showAlert('error', `Failed to load users: ${error.message}`);
         });
 }
 
@@ -89,13 +97,10 @@ function loadUsers() {
 function renderUsersTable(users) {
     const tbody = document.querySelector('#userTable tbody');
     if (!tbody) return;
-    
-    tbody.innerHTML = '';
 
-    // **URUTKAN BERDASARKAN ID** (tambahkan baris ini)
     users.sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
-    users.forEach(u => {
+    const html = users.map(u => {
         const roleClass = u.role === 'admin' ? 'role-admin'
             : u.role === 'technician' ? 'role-technician'
             : 'role-viewer';
@@ -119,45 +124,47 @@ function renderUsersTable(users) {
             ? `<span style="font-size:0.6rem;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:99px;background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);margin-left:6px">YOU</span>`
             : '';
 
-        const row = document.createElement('tr');
-        if (u.is_current) row.style.background = 'rgba(99,102,241,.05)';
+        const rowStyle = u.is_current ? ' style="background:rgba(99,102,241,.05)"' : '';
 
-        row.innerHTML = `
-            <td style="text-align:center"><code>${u.id}</code></td>
-            <td>
-                <div class="usr-cell">
-                    <div class="usr-avatar ${avatarClass}">${initials}</div>
-                    <div>
-                        <div class="usr-name">${escapeHtml(u.username)}${youBadge}</div>
-                        <div class="usr-fullname">${escapeHtml(u.full_name || '')}</div>
+        return `
+            <tr${rowStyle}>
+                <td style="text-align:center"><code>${u.id}</code></td>
+                <td>
+                    <div class="usr-cell">
+                        <div class="usr-avatar ${avatarClass}">${initials}</div>
+                        <div>
+                            <div class="usr-name">${escapeHtml(u.username)}${youBadge}</div>
+                            <div class="usr-fullname">${escapeHtml(u.full_name || '')}</div>
+                        </div>
                     </div>
-                </div>
-            </td>
-            <td style="text-align:center">
-                <span class="role-badge ${roleClass}">
-                    <i class="fas ${roleIcon}"></i> ${u.role}
-                </span>
-            </td>
-            <td style="text-align:center">
-                <span class="usr-status ${statusTextClass}">
-                    <span class="usr-status-dot ${statusDotClass}"></span>
-                    ${statusLabel}
-                </span>
-            </td>
-            <td class="actions-cell" style="text-align:center">
-                <div class="action-buttons">
-                    <button class="btn btn-icon btn-edit action-edit" onclick='editUser(${JSON.stringify(u)})' title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-icon btn-danger action-delete"
-                        onclick="deleteUser(${u.id}, '${escapeHtml(u.username)}')" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </td>
+                </td>
+                <td style="text-align:center">
+                    <span class="role-badge ${roleClass}">
+                        <i class="fas ${roleIcon}"></i> ${u.role}
+                    </span>
+                </td>
+                <td style="text-align:center">
+                    <span class="usr-status ${statusTextClass}">
+                        <span class="usr-status-dot ${statusDotClass}"></span>
+                        ${statusLabel}
+                    </span>
+                </td>
+                <td class="actions-cell" style="text-align:center">
+                    <div class="action-buttons">
+                        <button class="btn btn-icon btn-edit action-edit" onclick='editUser(${JSON.stringify(u)})' title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-icon btn-danger action-delete"
+                            onclick="deleteUser(${u.id}, '${escapeHtml(u.username)}')" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
         `;
-        tbody.appendChild(row);
-    });
+    }).join('');
+
+    tbody.innerHTML = html;
 }
 
 // ===============================

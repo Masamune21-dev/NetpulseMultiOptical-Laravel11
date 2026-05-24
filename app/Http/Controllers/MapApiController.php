@@ -115,6 +115,7 @@ class MapApiController extends Controller
                     ])
                     ->where('device_id', $node['device_id'])
                     ->where('is_monitored', 1)
+                    ->where('is_sfp', 1)
                     ->orderBy('if_index')
                     ->limit(200)
                     ->get();

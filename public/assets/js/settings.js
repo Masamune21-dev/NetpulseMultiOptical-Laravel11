@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (document.getElementById('alert')?.classList?.contains('active')) {
                 refreshAlertLogs();
+                refreshMobileDevices();
+                refreshMobilePushTargets();
             }
             if (document.getElementById('logs')?.classList?.contains('active')) {
                 refreshSecurityLogs();
@@ -26,6 +28,8 @@ function openTab(id) {
 
     if (id === 'alert') {
         refreshAlertLogs();
+        refreshMobileDevices();
+        refreshMobilePushTargets();
     }
     if (id === 'logs') {
         refreshSecurityLogs();
@@ -60,6 +64,7 @@ function loadSettings() {
 
             setCheckbox('alert_telegram_enabled', d.alert_telegram_enabled);
             setCheckbox('alert_webui_enabled', d.alert_webui_enabled);
+            setCheckbox('alert_mobile_enabled', d.alert_mobile_enabled);
             setCheckbox('alert_interface_down', d.alert_interface_down);
             setCheckbox('alert_interface_up', d.alert_interface_up);
             setCheckbox('alert_interface_warning', d.alert_interface_warning);
@@ -80,32 +85,17 @@ function loadSettings() {
             if (radio) radio.checked = true;
 
             // Theme colors
-            const primaryInput = document.getElementById('primary_color');
-            const softInput = document.getElementById('primary_soft');
-            const preview = document.getElementById('themeGradientPreview');
-            const primaryHex = document.getElementById('primaryColorHex');
-            const softHex = document.getElementById('primarySoftHex');
-
-            if (primaryInput) primaryInput.value = d.primary_color || '#ffe14a';
-            if (softInput) softInput.value = d.primary_soft || '#ff5c8a';
-            if (primaryHex) primaryHex.textContent = (primaryInput && primaryInput.value) || '#ffe14a';
-            if (softHex) softHex.textContent = (softInput && softInput.value) || '#ff5c8a';
-
-            if (primaryInput && softInput) {
-                applyThemeColors(primaryInput.value, softInput.value, preview);
-                try {
-                    localStorage.setItem('primary_color', primaryInput.value);
-                    localStorage.setItem('primary_soft', softInput.value);
-                } catch (e) {}
-                primaryInput.addEventListener('input', () => {
-                    if (primaryHex) primaryHex.textContent = primaryInput.value;
-                    applyThemeColors(primaryInput.value, softInput.value, preview);
-                });
-                softInput.addEventListener('input', () => {
-                    if (softHex) softHex.textContent = softInput.value;
-                    applyThemeColors(primaryInput.value, softInput.value, preview);
-                });
-            }
+            THEME_COLORS.forEach(({ key, cssVar, default: dflt }) => {
+                const value = normalizeHex(d[key]) || dflt;
+                const swatch = document.querySelector(`.theme-color-swatch[data-key="${key}"]`);
+                const hex = document.querySelector(`.theme-color-hex[data-key="${key}"]`);
+                if (swatch) swatch.value = value;
+                if (hex) hex.value = value;
+                document.documentElement.style.setProperty(cssVar, value);
+                try { localStorage.setItem(key, value); } catch (e) {}
+            });
+            syncPrimaryGradient();
+            attachThemeColorListeners();
 
             // Live theme preview on radio change
             document.querySelectorAll('input[name="theme"]').forEach(input => {
@@ -164,6 +154,7 @@ function saveAlerts() {
     const payload = {
         alert_telegram_enabled: getCheckboxVal('alert_telegram_enabled', '1'),
         alert_webui_enabled: getCheckboxVal('alert_webui_enabled', '1'),
+        alert_mobile_enabled: getCheckboxVal('alert_mobile_enabled', '1'),
         alert_interface_down: getCheckboxVal('alert_interface_down', '1'),
         alert_interface_up: getCheckboxVal('alert_interface_up', '1'),
         alert_interface_warning: getCheckboxVal('alert_interface_warning', '1'),
@@ -289,6 +280,166 @@ function clearAlertLogs() {
         .catch(() => showNotification('Failed to clear alert logs', 'error'));
 }
 
+function refreshMobileDevices() {
+    const box = document.getElementById('mobileDeviceBox');
+    if (!box) return;
+
+    fetch('api/mobile_devices')
+        .then(r => r.json())
+        .then(d => {
+            if (!d || !d.success) {
+                box.textContent = (d && d.error) ? d.error : 'Failed to load devices';
+                return;
+            }
+            renderMobileDevices(d.data || []);
+        })
+        .catch(() => {
+            box.textContent = 'Failed to load devices';
+        });
+}
+
+function renderMobileDevices(rows) {
+    const box = document.getElementById('mobileDeviceBox');
+    if (!box) return;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+        box.textContent = 'No mobile devices registered';
+        return;
+    }
+
+    const header = `
+        <div class="alert-log-header">
+            <div>User</div>
+            <div>Platform</div>
+            <div>Device / Token</div>
+            <div>Last Seen</div>
+        </div>
+    `;
+
+    const html = rows.map(r => {
+        const user = r.user_name
+            ? `${escapeHtml(r.user_name)} <span style="opacity:.6">#${r.user_id}</span>`
+            : `<span style="opacity:.6">User #${r.user_id}</span>`;
+        const platform = `<span class="alert-badge info">${escapeHtml(r.platform || '-')}</span>`;
+        const deviceName = r.device_name ? escapeHtml(r.device_name) : '<em>unknown device</em>';
+        const tokenPreview = r.token_preview
+            ? `<div class="alert-meta"><span class="alert-chip"><i class="fas fa-key"></i><code>${escapeHtml(r.token_preview)}</code></span></div>`
+            : '';
+        const lastSeen = r.last_seen_at || r.created_at || '-';
+
+        return `
+            <div class="alert-log-row">
+                <div class="alert-log-device"><div class="name">${user}</div></div>
+                <div>${platform}</div>
+                <div class="alert-log-device">
+                    <div class="name" title="${escapeHtml(r.device_name || '')}">${deviceName}</div>
+                    ${tokenPreview}
+                </div>
+                <div class="alert-log-time">
+                    ${escapeHtml(lastSeen)}
+                    <div style="margin-top:6px">
+                        <button class="btn btn-danger action-delete" style="padding:4px 10px;font-size:.75rem"
+                                onclick="revokeMobileDevice(${r.id})">
+                            <i class="fas fa-trash"></i> Revoke
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    box.innerHTML = header + html;
+}
+
+function refreshMobilePushTargets() {
+    const sel = document.getElementById('pushTarget');
+    if (!sel) return;
+
+    fetch('api/mobile_push_targets')
+        .then(r => r.json())
+        .then(d => {
+            if (!d || !d.success) {
+                sel.innerHTML = `<option value="all">All Devices (0)</option>`;
+                return;
+            }
+            const total = (d.data && d.data.total_devices) || 0;
+            const users = (d.data && d.data.users) || [];
+
+            const prev = sel.value;
+            const opts = [`<option value="all">All Devices (${total})</option>`];
+            users.forEach(u => {
+                const label = u.name ? `${escapeHtml(u.name)} (user #${u.id})` : `User #${u.id}`;
+                opts.push(`<option value="user:${u.id}">${label}</option>`);
+            });
+            sel.innerHTML = opts.join('');
+
+            if (prev) sel.value = prev;
+            if (!sel.value) sel.value = 'all';
+        })
+        .catch(() => {
+            sel.innerHTML = `<option value="all">All Devices</option>`;
+        });
+}
+
+function sendMobilePush() {
+    if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
+
+    const title = (document.getElementById('pushTitle')?.value || '').trim();
+    const body = (document.getElementById('pushBody')?.value || '').trim();
+    const targetRaw = document.getElementById('pushTarget')?.value || 'all';
+
+    if (!title || !body) {
+        showNotification('Title dan message wajib diisi', 'error');
+        return;
+    }
+
+    let payload = { title, body, target: 'all' };
+    if (targetRaw.startsWith('user:')) {
+        payload.target = 'user';
+        payload.user_id = parseInt(targetRaw.slice(5), 10);
+    }
+
+    if (!confirm(`Kirim push ke target: ${targetRaw === 'all' ? 'All Devices' : targetRaw}?`)) return;
+
+    fetch('api/mobile_push_send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    })
+        .then(r => r.json().catch(() => ({})))
+        .then(d => {
+            if (!d || (!d.success && !d.sent)) {
+                const err = d && (d.error || (d.errors && d.errors[0])) || 'Failed to send';
+                showNotification(err, 'error');
+                return;
+            }
+            let msg = `Sent ${d.sent || 0} push`;
+            if (d.failed) msg += ` (${d.failed} failed)`;
+            showNotification(msg, d.failed ? 'warning' : 'success');
+
+            const bodyEl = document.getElementById('pushBody');
+            if (bodyEl) bodyEl.value = '';
+        })
+        .catch(() => showNotification('Failed to send push', 'error'));
+}
+
+function revokeMobileDevice(id) {
+    if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
+    if (!confirm('Cabut device ini? Aplikasi mobile harus login ulang untuk menerima alert lagi.')) return;
+
+    fetch('api/mobile_devices/' + encodeURIComponent(id), { method: 'DELETE' })
+        .then(r => r.json().catch(() => ({})))
+        .then(d => {
+            if (!d || !d.success) {
+                showNotification((d && d.error) ? d.error : 'Failed to revoke device', 'error');
+                return;
+            }
+            showNotification('Mobile device revoked', 'success');
+            refreshMobileDevices();
+        })
+        .catch(() => showNotification('Failed to revoke device', 'error'));
+}
+
 function escapeHtml(str) {
     return String(str ?? '')
         .replaceAll('&', '&amp;')
@@ -298,69 +449,105 @@ function escapeHtml(str) {
         .replaceAll("'", '&#039;');
 }
 
+const THEME_COLORS = [
+    { key: 'primary_color',  cssVar: '--primary',      default: '#ffe14a' },
+    { key: 'primary_soft',   cssVar: '--primary-soft', default: '#ff5c8a' },
+    { key: 'accent_color',   cssVar: '--accent',       default: '#00d1ff' },
+    { key: 'accent_2_color', cssVar: '--accent-2',     default: '#70f570' },
+    { key: 'danger_color',   cssVar: '--danger',       default: '#ef4444' },
+    { key: 'warning_color',  cssVar: '--warning',      default: '#f59e0b' },
+];
+
+function normalizeHex(v) {
+    if (typeof v !== 'string') return '';
+    const s = v.trim().toLowerCase();
+    return /^#[0-9a-f]{6}$/.test(s) ? s : '';
+}
+
+function syncPrimaryGradient() {
+    const root = document.documentElement.style;
+    const p = root.getPropertyValue('--primary').trim() || '#ffe14a';
+    const s = root.getPropertyValue('--primary-soft').trim() || '#ff5c8a';
+    root.setProperty('--primary-gradient', `linear-gradient(135deg, ${p} 0%, ${s} 100%)`);
+}
+
+function attachThemeColorListeners() {
+    THEME_COLORS.forEach(({ key, cssVar }) => {
+        const swatch = document.querySelector(`.theme-color-swatch[data-key="${key}"]`);
+        const hex = document.querySelector(`.theme-color-hex[data-key="${key}"]`);
+        if (!swatch || !hex) return;
+        if (swatch.dataset.bound === '1') return;
+        swatch.dataset.bound = '1';
+
+        swatch.addEventListener('input', () => {
+            const v = swatch.value.toLowerCase();
+            hex.value = v;
+            hex.classList.remove('invalid');
+            document.documentElement.style.setProperty(cssVar, v);
+            if (key === 'primary_color' || key === 'primary_soft') syncPrimaryGradient();
+        });
+        hex.addEventListener('input', () => {
+            const v = normalizeHex(hex.value);
+            if (!v) {
+                hex.classList.add('invalid');
+                return;
+            }
+            hex.classList.remove('invalid');
+            swatch.value = v;
+            document.documentElement.style.setProperty(cssVar, v);
+            if (key === 'primary_color' || key === 'primary_soft') syncPrimaryGradient();
+        });
+        hex.addEventListener('blur', () => {
+            if (!normalizeHex(hex.value)) {
+                hex.value = swatch.value;
+                hex.classList.remove('invalid');
+            }
+        });
+    });
+}
+
 function saveTheme() {
     if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
     const theme = document.querySelector('input[name="theme"]:checked').value;
-    const primaryInput = document.getElementById('primary_color');
-    const softInput = document.getElementById('primary_soft');
-    const primaryColor = primaryInput ? primaryInput.value : '#ffe14a';
-    const primarySoft = softInput ? softInput.value : '#ff5c8a';
+    document.body.dataset.theme = theme;
+    document.documentElement.dataset.theme = theme;
 
-    document.body.dataset.theme = theme; // 🔥 langsung apply
-    applyThemeColors(primaryColor, primarySoft, document.getElementById('themeGradientPreview'));
+    const payload = { theme };
+    THEME_COLORS.forEach(({ key, cssVar, default: dflt }) => {
+        const swatch = document.querySelector(`.theme-color-swatch[data-key="${key}"]`);
+        const value = (swatch && normalizeHex(swatch.value)) || dflt;
+        payload[key] = value;
+        document.documentElement.style.setProperty(cssVar, value);
+        try { localStorage.setItem(key, value); } catch (e) {}
+    });
+    syncPrimaryGradient();
 
     fetch('api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            theme,
-            primary_color: primaryColor,
-            primary_soft: primarySoft
-        })
-    }).then(() => {
-        try {
-            localStorage.setItem('primary_color', primaryColor);
-            localStorage.setItem('primary_soft', primarySoft);
-        } catch (e) {}
-        showNotification('Theme saved', 'success');
-    });
-}
-
-function applyThemeColors(primaryColor, primarySoft, previewEl) {
-    document.documentElement.style.setProperty('--primary', primaryColor);
-    document.documentElement.style.setProperty('--primary-soft', primarySoft);
-    document.documentElement.style.setProperty(
-        '--primary-gradient',
-        `linear-gradient(135deg, ${primaryColor} 0%, ${primarySoft} 100%)`
-    );
-    if (previewEl) {
-        previewEl.style.background = `linear-gradient(135deg, ${primaryColor}, ${primarySoft})`;
-    }
+        body: JSON.stringify(payload),
+    }).then(() => showNotification('Theme saved', 'success'));
 }
 
 function resetThemeColors() {
     if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
-    const primary = '#ffe14a';
-    const soft = '#ff5c8a';
-    const primaryInput = document.getElementById('primary_color');
-    const softInput = document.getElementById('primary_soft');
-    if (primaryInput) primaryInput.value = primary;
-    if (softInput) softInput.value = soft;
-    applyThemeColors(primary, soft, document.getElementById('themeGradientPreview'));
+    const payload = {};
+    THEME_COLORS.forEach(({ key, cssVar, default: dflt }) => {
+        const swatch = document.querySelector(`.theme-color-swatch[data-key="${key}"]`);
+        const hex = document.querySelector(`.theme-color-hex[data-key="${key}"]`);
+        if (swatch) swatch.value = dflt;
+        if (hex) { hex.value = dflt; hex.classList.remove('invalid'); }
+        document.documentElement.style.setProperty(cssVar, dflt);
+        payload[key] = dflt;
+        try { localStorage.setItem(key, dflt); } catch (e) {}
+    });
+    syncPrimaryGradient();
+
     fetch('api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            primary_color: primary,
-            primary_soft: soft
-        })
-    }).then(() => {
-        try {
-            localStorage.setItem('primary_color', primary);
-            localStorage.setItem('primary_soft', soft);
-        } catch (e) {}
-        showNotification('Theme colors reset', 'success');
-    });
+        body: JSON.stringify(payload),
+    }).then(() => showNotification('Theme colors reset', 'success'));
 }
 
 

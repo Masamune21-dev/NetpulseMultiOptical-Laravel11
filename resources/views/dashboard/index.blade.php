@@ -17,39 +17,39 @@
             {{-- Device Aktif --}}
             <div class="db-kpi db-kpi--default">
                 <div class="db-kpi__icon"><i class="fas fa-server"></i></div>
-                <div class="db-kpi__val" data-counter="{{ $deviceCount }}">{{ $deviceCount }}</div>
+                <div class="db-kpi__val" data-counter="{{ $deviceCount }}" data-dash-key="device_count">{{ $deviceCount }}</div>
                 <div class="db-kpi__label">Device Aktif</div>
-                <div class="db-kpi__sub">dari {{ $deviceHealth['total'] }} terdaftar</div>
+                <div class="db-kpi__sub" data-dash-sub="device_count">dari {{ $deviceHealth['total'] }} terdaftar</div>
             </div>
 
             {{-- Total Interface --}}
             <div class="db-kpi db-kpi--cyan">
                 <div class="db-kpi__icon db-kpi__icon--cyan"><i class="fas fa-plug"></i></div>
-                <div class="db-kpi__val" data-counter="{{ $ifCount }}">{{ $ifCount }}</div>
+                <div class="db-kpi__val" data-counter="{{ $ifCount }}" data-dash-key="interface_count">{{ $ifCount }}</div>
                 <div class="db-kpi__label">Total Interface</div>
-                <div class="db-kpi__sub">{{ $ifUpCount }} up &middot; {{ $ifDownCount }} down</div>
+                <div class="db-kpi__sub" data-dash-sub="interface_count">{{ $ifUpCount }} up &middot; {{ $ifDownCount }} down</div>
             </div>
 
             {{-- SFP Aktif --}}
             <div class="db-kpi db-kpi--success">
                 <div class="db-kpi__icon db-kpi__icon--success"><i class="fas fa-circle-nodes"></i></div>
-                <div class="db-kpi__val" data-counter="{{ $sfpCount }}">{{ $sfpCount }}</div>
+                <div class="db-kpi__val" data-counter="{{ $sfpCount }}" data-dash-key="sfp_count">{{ $sfpCount }}</div>
                 <div class="db-kpi__label">SFP / Optik Aktif</div>
                 <div class="db-kpi__sub">port optik terdeteksi</div>
             </div>
 
             {{-- Optical Critical --}}
-            <div class="db-kpi {{ $badOptical > 0 ? 'db-kpi--danger' : 'db-kpi--success' }}">
-                <div class="db-kpi__icon">
+            <div class="db-kpi {{ $badOptical > 0 ? 'db-kpi--danger' : 'db-kpi--success' }}" data-dash-card="bad_optical_count">
+                <div class="db-kpi__icon" data-dash-icon="bad_optical_count">
                     @if($badOptical > 0)
                         <i class="fas fa-triangle-exclamation"></i>
                     @else
                         <i class="fas fa-shield-check"></i>
                     @endif
                 </div>
-                <div class="db-kpi__val" data-counter="{{ $badOptical }}">{{ $badOptical }}</div>
+                <div class="db-kpi__val" data-counter="{{ $badOptical }}" data-dash-key="bad_optical_count">{{ $badOptical }}</div>
                 <div class="db-kpi__label">Optical Critical</div>
-                <div class="db-kpi__sub">
+                <div class="db-kpi__sub" data-dash-sub="bad_optical_count">
                     @if($badOptical > 0) port bermasalah @else semua port normal @endif
                 </div>
             </div>
@@ -57,7 +57,7 @@
             {{-- Total Users --}}
             <div class="db-kpi db-kpi--amber">
                 <div class="db-kpi__icon db-kpi__icon--amber"><i class="fas fa-users"></i></div>
-                <div class="db-kpi__val" data-counter="{{ $userCount }}">{{ $userCount }}</div>
+                <div class="db-kpi__val" data-counter="{{ $userCount }}" data-dash-key="user_count">{{ $userCount }}</div>
                 <div class="db-kpi__label">Total Users</div>
                 <div class="db-kpi__sub">akun terdaftar</div>
             </div>
@@ -98,22 +98,22 @@
                 <div class="db-chart-wrap" style="height:180px; position:relative">
                     <canvas id="dbHealthDonutChart"></canvas>
                     <div class="db-donut-center">
-                        <div class="db-donut-center__val">{{ $deviceHealth['active'] }}</div>
+                        <div class="db-donut-center__val" data-dash-donut="active">{{ $deviceHealth['active'] }}</div>
                         <div class="db-donut-center__label">Active</div>
                     </div>
                 </div>
                 <div class="db-donut-legend">
                     <div class="db-donut-legend__item">
                         <span class="db-donut-legend__dot" style="background:#10b981"></span>
-                        Active ({{ $deviceHealth['active'] }})
+                        Active (<span data-dash-legend="active">{{ $deviceHealth['active'] }}</span>)
                     </div>
                     <div class="db-donut-legend__item">
                         <span class="db-donut-legend__dot" style="background:#ef4444"></span>
-                        Failed ({{ $deviceHealth['failed'] }})
+                        Failed (<span data-dash-legend="failed">{{ $deviceHealth['failed'] }}</span>)
                     </div>
                     <div class="db-donut-legend__item">
                         <span class="db-donut-legend__dot" style="background:#475569"></span>
-                        Inactive ({{ $deviceHealth['inactive'] }})
+                        Inactive (<span data-dash-legend="inactive">{{ $deviceHealth['inactive'] }}</span>)
                     </div>
                 </div>
             </div>
@@ -137,6 +137,7 @@
                     </div>
                     <span class="db-badge db-badge--warn">Top 6 RX Terendah</span>
                 </div>
+                <div id="dbWorstPortsWrap">
                 @if(count($worstPorts) > 0)
                 <table class="db-sfp-table">
                     <thead>
@@ -189,6 +190,7 @@
                     Semua port optik dalam kondisi normal
                 </div>
                 @endif
+                </div>
             </div>
 
             {{-- Recent Alert Feed --}}
@@ -201,6 +203,7 @@
                     </div>
                     <span class="db-badge db-badge--info">Live Feed</span>
                 </div>
+                <div id="dbRecentAlertsWrap">
                 @if(count($recentAlerts) > 0)
                 <div class="db-alert-feed">
                     @foreach($recentAlerts as $alert)
@@ -241,6 +244,7 @@
                     Belum ada alert tercatat
                 </div>
                 @endif
+                </div>
             </div>
 
         </div>
@@ -433,36 +437,182 @@
         });
     }
 
-    /* ── KPI auto-refresh (Axios, 60 s) ────────────────────── */
-    const kpiEls = {
-        deviceCount: document.querySelector('[data-counter="{{ $deviceCount }}"]'),
-    };
+    /* ── Dashboard in-place refresh (no full reload, no flicker) ── */
+    function escapeHtml(str) {
+        return String(str ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
 
-    function refreshKpi() {
+    function setText(selector, value) {
+        const el = document.querySelector(selector);
+        if (el && el.textContent !== String(value)) el.textContent = value;
+    }
+
+    function setKpi(key, value) {
+        const el = document.querySelector(`[data-dash-key="${key}"]`);
+        if (!el) return;
+        const newVal = String(value ?? 0);
+        if (el.textContent !== newVal) {
+            el.textContent = newVal;
+            el.dataset.counter = newVal;
+        }
+    }
+
+    function applyOpticalCriticalState(count) {
+        const card = document.querySelector('[data-dash-card="bad_optical_count"]');
+        const icon = document.querySelector('[data-dash-icon="bad_optical_count"]');
+        const sub = document.querySelector('[data-dash-sub="bad_optical_count"]');
+        if (!card || !icon || !sub) return;
+        const danger = count > 0;
+        card.classList.toggle('db-kpi--danger', danger);
+        card.classList.toggle('db-kpi--success', !danger);
+        icon.innerHTML = danger
+            ? '<i class="fas fa-triangle-exclamation"></i>'
+            : '<i class="fas fa-shield-check"></i>';
+        sub.textContent = danger ? 'port bermasalah' : 'semua port normal';
+    }
+
+    function pwrClassFor(rx) {
+        if (rx >= -25) return 'db-pwr--ok';
+        if (rx >= -30) return 'db-pwr--warn';
+        if (rx >= -35) return 'db-pwr--bad';
+        return 'db-pwr--crit';
+    }
+    function barColorFor(rx) {
+        if (rx >= -25) return '#10b981';
+        if (rx >= -30) return '#f59e0b';
+        return '#ef4444';
+    }
+
+    function renderWorstPorts(ports) {
+        const wrap = document.getElementById('dbWorstPortsWrap');
+        if (!wrap) return;
+        if (!ports || !ports.length) {
+            wrap.innerHTML = `
+                <div style="text-align:center; padding:32px 0; color:var(--text-muted,#94a3b8); font-size:.8rem;">
+                    <i class="fas fa-circle-check" style="font-size:2rem; color:#10b981; margin-bottom:8px; display:block"></i>
+                    Semua port optik dalam kondisi normal
+                </div>`;
+            return;
+        }
+        const rows = ports.map(p => {
+            const rx = Number(p.rx_power) || 0;
+            const tx = Number(p.tx_power) || 0;
+            const cls = pwrClassFor(rx);
+            const barPct = Math.max(0, Math.min(100, ((rx + 40) / 30) * 100));
+            const color = barColorFor(rx);
+            const aliasHtml = p.if_alias
+                ? `<span style="color:var(--text-muted,#94a3b8); font-family:inherit"> · ${escapeHtml(p.if_alias)}</span>`
+                : '';
+            return `
+                <tr>
+                    <td>
+                        <div class="db-if-name">${escapeHtml(p.if_name)}${aliasHtml}</div>
+                        <div class="db-dev-name">${escapeHtml(p.device_name || '')}</div>
+                    </td>
+                    <td>
+                        <span class="db-pwr ${cls}">${rx.toFixed(2)} dBm</span>
+                        <span class="db-pwr-bar-wrap">
+                            <span class="db-pwr-bar" style="width:${barPct}%; background:${color}"></span>
+                        </span>
+                    </td>
+                    <td>
+                        <span class="db-pwr" style="color:var(--text-muted,#94a3b8)">${tx.toFixed(2)} dBm</span>
+                    </td>
+                </tr>`;
+        }).join('');
+        wrap.innerHTML = `
+            <table class="db-sfp-table">
+                <thead><tr><th>Device / Port</th><th>RX Power</th><th>TX Power</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>`;
+    }
+
+    function iconForEvent(eventType) {
+        const ev = String(eventType || '');
+        if (ev.includes('down')) return 'fas fa-arrow-down';
+        if (ev.includes('up')) return 'fas fa-arrow-up';
+        if (ev.includes('warning')) return 'fas fa-triangle-exclamation';
+        return 'fas fa-circle-info';
+    }
+    function timeAgoFrom(createdAt) {
+        if (!createdAt) return '';
+        const t = Date.parse(createdAt.replace(' ', 'T'));
+        if (Number.isNaN(t)) return '';
+        const diff = Math.max(0, Math.floor((Date.now() - t) / 1000));
+        if (diff < 60) return diff + 'd lalu';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm lalu';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'j lalu';
+        return Math.floor(diff / 86400) + 'h lalu';
+    }
+
+    function renderRecentAlerts(alerts) {
+        const wrap = document.getElementById('dbRecentAlertsWrap');
+        if (!wrap) return;
+        if (!alerts || !alerts.length) {
+            wrap.innerHTML = `
+                <div style="text-align:center; padding:32px 0; color:var(--text-muted,#94a3b8); font-size:.8rem;">
+                    <i class="fas fa-inbox" style="font-size:2rem; margin-bottom:8px; display:block; opacity:.4"></i>
+                    Belum ada alert tercatat
+                </div>`;
+            return;
+        }
+        const items = alerts.map(a => {
+            const sev = String(a.severity || 'info').toLowerCase();
+            const iface = a.if_name ? ` · ${escapeHtml(a.if_name)}` : '';
+            return `
+                <div class="db-alert-item db-alert-item--${escapeHtml(sev)}">
+                    <div class="db-alert-item__icon"><i class="${iconForEvent(a.event_type)}"></i></div>
+                    <div class="db-alert-item__body">
+                        <div class="db-alert-item__msg">${escapeHtml(a.message || '')}</div>
+                        <div class="db-alert-item__meta">${escapeHtml(a.device_name || '')}${iface}</div>
+                    </div>
+                    <div class="db-alert-item__time">${escapeHtml(timeAgoFrom(a.created_at))}</div>
+                </div>`;
+        }).join('');
+        wrap.innerHTML = `<div class="db-alert-feed">${items}</div>`;
+    }
+
+    function refreshDashboard() {
         if (document.hidden) return;
-        if (typeof axios === 'undefined') return;
-        axios.get('/api/v1/dashboard')
-            .then(res => {
-                const d = res.data?.data;
+        fetch('/api/dashboard/summary', { credentials: 'same-origin' })
+            .then(r => r.ok ? r.json() : Promise.reject(r))
+            .then(json => {
+                const d = json?.data;
                 if (!d) return;
-                // Update KPI card values (find by original data-counter attr)
-                document.querySelectorAll('[data-counter]').forEach(el => {
-                    // match by position in .db-kpi-grid
-                });
+                setKpi('device_count',     d.device_count);
+                setKpi('interface_count',  d.interface_count);
+                setKpi('sfp_count',        d.sfp_count);
+                setKpi('bad_optical_count',d.bad_optical_count);
+                setKpi('user_count',       d.user_count);
+                setText('[data-dash-sub="device_count"]',    `dari ${d.device_total ?? 0} terdaftar`);
+                setText('[data-dash-sub="interface_count"]', `${d.if_up_count ?? 0} up · ${d.if_down_count ?? 0} down`);
+                applyOpticalCriticalState(Number(d.bad_optical_count) || 0);
+
+                const h = d.device_health || {};
+                setText('[data-dash-donut="active"]',   h.active   ?? 0);
+                setText('[data-dash-legend="active"]',  h.active   ?? 0);
+                setText('[data-dash-legend="failed"]',  h.failed   ?? 0);
+                setText('[data-dash-legend="inactive"]',h.inactive ?? 0);
+
+                renderWorstPorts(d.worst_ports || []);
+                renderRecentAlerts(d.recent_alerts || []);
             })
             .catch(() => {});
     }
 
-    // Lightweight interval — we let the page reload handle stale data
-    // (same behavior as before, but now charts stay alive)
     if (window.netpulseRefresh && typeof window.netpulseRefresh.register === 'function') {
         window.netpulseRefresh.register('dashboard', () => {
             if (!location.pathname.startsWith('/dashboard')) return;
             if (document.hidden) return;
-            location.reload();
+            refreshDashboard();
         }, { minIntervalMs: 60000 });
     } else {
-        setTimeout(() => location.reload(), 60000);
+        setInterval(refreshDashboard, 60000);
     }
 
 })();

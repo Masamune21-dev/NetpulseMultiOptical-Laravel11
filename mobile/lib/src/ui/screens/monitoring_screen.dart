@@ -138,7 +138,7 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
                   if (_loadingDevices)
                     const LinearProgressIndicator(minHeight: 2),
                   DropdownButtonFormField<int>(
-                    value: _device?.id,
+                    initialValue: _device?.id,
                     items: _devices
                         .map(
                           (d) => DropdownMenuItem(
@@ -189,7 +189,7 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
                   if (_loadingIfs) const LinearProgressIndicator(minHeight: 2),
                   DropdownButtonFormField<int>(
                     isExpanded: true,
-                    value: _selectedIf?.ifIndex,
+                    initialValue: _selectedIf?.ifIndex,
                     items: _ifs
                         .map(
                           (i) => DropdownMenuItem(
@@ -329,8 +329,9 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
             interval: _labelInterval(labels.length, _range),
             getTitlesWidget: (value, meta) {
               final idx = value.round();
-              if (idx < 0 || idx >= labels.length)
+              if (idx < 0 || idx >= labels.length) {
                 return const SizedBox.shrink();
+              }
               final label = labels[idx];
               final tilt =
                   _range == '7d' || _range == '30d' || label.length > 5;
@@ -453,7 +454,7 @@ class _SummaryCard extends StatelessWidget {
                 ? '${iface!.ifName} ${iface!.ifAlias ?? ''}'.trim()
                 : '-',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.white.withOpacity(0.85),
+              color: Colors.white.withValues(alpha: 0.85),
             ),
           ),
           const SizedBox(height: 12),
@@ -488,7 +489,7 @@ class _MetricChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(

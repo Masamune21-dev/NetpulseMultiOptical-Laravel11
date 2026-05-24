@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\DeviceTokenController;
 use App\Http\Controllers\Api\V1\LocationController;
 use App\Http\Controllers\Api\V1\LogsController;
 use App\Http\Controllers\Api\V1\MapController;
+use App\Http\Controllers\Api\V1\InterfacesController;
 use App\Http\Controllers\Api\V1\MonitoringController;
 use App\Http\Controllers\Api\V1\PushTestController;
 use App\Http\Controllers\Api\V1\SettingsController;
@@ -31,6 +32,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/monitoring/devices', [MonitoringController::class, 'devices']);
         Route::get('/monitoring/interfaces', [MonitoringController::class, 'interfaces']);
         Route::get('/monitoring/chart', [MonitoringController::class, 'chart']);
+
+        Route::get('/interfaces', [InterfacesController::class, 'index']);
+        Route::get('/interfaces/traffic-history', [InterfacesController::class, 'trafficHistory']);
 
         Route::get('/map/nodes', [MapController::class, 'nodes']);
         Route::get('/map/links', [MapController::class, 'links']);

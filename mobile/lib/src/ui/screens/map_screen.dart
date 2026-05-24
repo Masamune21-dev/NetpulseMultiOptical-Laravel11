@@ -1,7 +1,10 @@
 import 'dart:async';
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../api/api_client.dart';
@@ -123,28 +126,16 @@ class _MapScreenState extends State<MapScreen> {
 
       return Marker(
         point: LatLng(n.lat, n.lng),
-        width: 44,
-        height: 44,
+        width: 48,
+        height: 62,
+        // In flutter_map, topCenter places the marker ABOVE the point,
+        // so the bottom edge (pin tip) sits exactly at the geographic point.
+        alignment: Alignment.topCenter,
         child: GestureDetector(
           onTap: () => _showNode(n),
-          child: Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [tone, tone.withValues(alpha: 0.7)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: const [
-                BoxShadow(
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                  color: Color(0x22000000),
-                ),
-              ],
-            ),
-            child: Icon(icon, color: Colors.white, size: 20),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: _PinMarker(icon: icon, tone: tone),
           ),
         ),
       );
@@ -374,6 +365,93 @@ class _MapScreenState extends State<MapScreen> {
       },
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pin Marker
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PinMarker extends StatelessWidget {
+  const _PinMarker({required this.icon, required this.tone});
+
+  final IconData icon;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [tone, tone.withValues(alpha: 0.78)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(color: Colors.white, width: 2.5),
+            boxShadow: [
+              BoxShadow(
+                color: tone.withValues(alpha: 0.45),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Center(
+            child: FaIcon(icon, color: Colors.white, size: 18),
+          ),
+        ),
+        // Negative gap so tip overlaps slightly with circle (looks unified)
+        Transform.translate(
+          offset: const Offset(0, -2),
+          child: CustomPaint(
+            size: const Size(14, 14),
+            painter: _PinTipPainter(color: tone),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PinTipPainter extends CustomPainter {
+  const _PinTipPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fill = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final stroke = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = ui.Path()
+      ..moveTo(1, 0)
+      ..lineTo(size.width - 1, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+
+    canvas.drawPath(path, fill);
+    // White outline on left + right edges only (not top, so it blends with circle)
+    final edge = ui.Path()
+      ..moveTo(1, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..lineTo(size.width - 1, 0);
+    canvas.drawPath(edge, stroke);
+  }
+
+  @override
+  bool shouldRepaint(_PinTipPainter old) => old.color != color;
 }
 
 class _TopPanel extends StatelessWidget {
@@ -743,11 +821,13 @@ double _mapZoom(List<MapNode> nodes) {
 
 IconData _iconForType(String type) {
   return switch (type.toLowerCase()) {
-    'switch' => Icons.hub_rounded,
-    'firewall' => Icons.security_rounded,
-    'ap' => Icons.wifi_rounded,
-    'server' => Icons.dns_rounded,
-    'cloud' => Icons.cloud_rounded,
-    _ => Icons.router_rounded,
+    'router'   => FontAwesomeIcons.networkWired,
+    'switch'   => FontAwesomeIcons.server,
+    'firewall' => FontAwesomeIcons.shieldHalved,
+    'ap'       => FontAwesomeIcons.wifi,
+    'server'   => FontAwesomeIcons.server,
+    'client'   => FontAwesomeIcons.desktop,
+    'cloud'    => FontAwesomeIcons.cloud,
+    _          => FontAwesomeIcons.networkWired,
   };
 }

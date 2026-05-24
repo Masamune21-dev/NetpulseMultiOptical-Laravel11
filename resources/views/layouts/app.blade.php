@@ -82,6 +82,11 @@
                             <i class="fas fa-server"></i><span>Devices</span>
                         </a>
                     </li>
+                    <li class="{{ request()->is('interfaces*') ? 'active' : '' }}">
+                        <a href="/interfaces">
+                            <i class="fas fa-ethernet"></i><span>Interfaces</span>
+                        </a>
+                    </li>
                     <li class="{{ request()->is('map*') ? 'active' : '' }}">
                         <a href="/map">
                             <i class="fas fa-map-location-dot"></i><span>Map</span>

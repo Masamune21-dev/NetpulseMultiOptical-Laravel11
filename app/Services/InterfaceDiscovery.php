@@ -49,6 +49,14 @@ class InterfaceDiscovery
         $ifAlias = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.18');
         $ifOper = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.8');
 
+        // Speed (Mbps) and 64-bit traffic counters. Fallback to 32-bit if HC unavailable.
+        $ifHighSpeed = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.15');
+        $ifSpeed = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.5');
+        $ifHCIn = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.6');
+        $ifHCOut = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.10');
+        $ifIn = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.10');
+        $ifOut = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.16');
+
         // Device up/down alert (CLI only, transition based)
         if ($isCli) {
             $deviceLabel = trim(($device->device_name ?? '') . ' (' . $ip . ')');
@@ -173,6 +181,21 @@ class InterfaceDiscovery
             $huaweiOpticalMap = $this->buildHuaweiOpticalMap($ip, $community, $ifNameMap);
         }
 
+        // Snapshot of previous counters for delta-based rate calc (only need for SFP).
+        $prevCounters = [];
+        $prevRows = DB::table('interfaces')
+            ->select(['if_index', 'in_octets', 'out_octets', 'counters_polled_at'])
+            ->where('device_id', $deviceId)
+            ->get();
+        foreach ($prevRows as $row) {
+            $prevCounters[(int) $row->if_index] = [
+                'in_octets' => $row->in_octets !== null ? (int) $row->in_octets : null,
+                'out_octets' => $row->out_octets !== null ? (int) $row->out_octets : null,
+                'polled_at' => $row->counters_polled_at,
+            ];
+        }
+        $nowTs = time();
+
         $inserted = 0;
         $sfpCount = 0;
         $downSfpCount = 0;
@@ -192,6 +215,51 @@ class InterfaceDiscovery
             $type = 'other';
             $tx = null;
             $rx = null;
+
+            // Speed (bps). Prefer ifHighSpeed (Mbps) since ifSpeed overflows >4Gbps.
+            // SNMP walk values come as "Type: value" (e.g. "Gauge32: 1000") so use
+            // preg_match to extract the trailing integer instead of filter_var, which
+            // would leak digits from the type prefix.
+            $speedBps = null;
+            $hs = $this->snmpIntVal($ifHighSpeed[$i] ?? null);
+            if ($hs !== null && $hs > 0) {
+                $speedBps = $hs * 1000000;
+            }
+            if ($speedBps === null) {
+                $sp = $this->snmpIntVal($ifSpeed[$i] ?? null);
+                if ($sp !== null && $sp > 0) {
+                    $speedBps = $sp;
+                }
+            }
+
+            // Traffic counters. Use HC (64-bit) when available, fallback to 32-bit.
+            $inOct = $this->snmpIntVal($ifHCIn[$i] ?? null);
+            if ($inOct === null) {
+                $inOct = $this->snmpIntVal($ifIn[$i] ?? null);
+            }
+            $outOct = $this->snmpIntVal($ifHCOut[$i] ?? null);
+            if ($outOct === null) {
+                $outOct = $this->snmpIntVal($ifOut[$i] ?? null);
+            }
+
+            // Rate calculation from previous sample.
+            $inRate = null;
+            $outRate = null;
+            if (isset($prevCounters[$ifIdx])) {
+                $prev = $prevCounters[$ifIdx];
+                if ($prev['polled_at']) {
+                    $prevTs = strtotime((string) $prev['polled_at']);
+                    $delta = $nowTs - $prevTs;
+                    if ($delta > 0 && $delta < 3600) {
+                        if ($inOct !== null && $prev['in_octets'] !== null && $inOct >= $prev['in_octets']) {
+                            $inRate = (int) (($inOct - $prev['in_octets']) * 8 / $delta);
+                        }
+                        if ($outOct !== null && $prev['out_octets'] !== null && $outOct >= $prev['out_octets']) {
+                            $outRate = (int) (($outOct - $prev['out_octets']) * 8 / $delta);
+                        }
+                    }
+                }
+            }
 
             if (
                 stripos($name, 'sfp') !== false ||
@@ -355,8 +423,8 @@ class InterfaceDiscovery
 
             DB::statement(
                 "INSERT INTO interfaces
-                (device_id, if_index, if_name, if_alias, if_description, optical_index, rx_power, tx_power, oper_status, last_seen, is_sfp, interface_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+                (device_id, if_index, if_name, if_alias, if_description, optical_index, rx_power, tx_power, oper_status, last_seen, is_sfp, interface_type, if_speed, in_octets, out_octets, in_rate_bps, out_rate_bps, counters_polled_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE
                     optical_index=VALUES(optical_index),
                     rx_power=VALUES(rx_power),
@@ -364,7 +432,13 @@ class InterfaceDiscovery
                     oper_status=VALUES(oper_status),
                     last_seen=NOW(),
                     is_sfp=VALUES(is_sfp),
-                    interface_type=VALUES(interface_type)",
+                    interface_type=VALUES(interface_type),
+                    if_speed=VALUES(if_speed),
+                    in_octets=VALUES(in_octets),
+                    out_octets=VALUES(out_octets),
+                    in_rate_bps=VALUES(in_rate_bps),
+                    out_rate_bps=VALUES(out_rate_bps),
+                    counters_polled_at=NOW()",
                 [
                     $deviceId,
                     $ifIdx,
@@ -377,12 +451,29 @@ class InterfaceDiscovery
                     $oper,
                     $isSfp,
                     $type,
+                    $speedBps,
+                    $inOct,
+                    $outOct,
+                    $inRate,
+                    $outRate,
                 ]
             );
 
             $inserted++;
             if ($isSfp) {
                 $sfpCount++;
+            }
+
+            if ($isSfp && ($inOct !== null || $outOct !== null)) {
+                DB::table('interface_traffic_stats')->insert([
+                    'device_id' => $deviceId,
+                    'if_index' => $ifIdx,
+                    'in_octets' => $inOct,
+                    'out_octets' => $outOct,
+                    'in_rate_bps' => $inRate,
+                    'out_rate_bps' => $outRate,
+                    'created_at' => now(),
+                ]);
             }
 
             if ($isSfp && $rx !== null) {
@@ -422,6 +513,23 @@ class InterfaceDiscovery
         ];
     }
 
+    /**
+     * Parse a raw SNMP scalar value (e.g. "Counter64: 12345", "Gauge32: 100",
+     * "INTEGER: 7", or a bare integer) into an int. Returns null if no integer
+     * can be extracted.
+     */
+    private function snmpIntVal($raw): ?int
+    {
+        if ($raw === null || $raw === false) {
+            return null;
+        }
+        $s = (string) $raw;
+        if (preg_match('/(-?\d+)(?!.*\d)/', $s, $m)) {
+            return (int) $m[1];
+        }
+        return null;
+    }
+
     private function loadTelegramSettings(): array
     {
         // Backward compatibility shim (older callers)
@@ -442,6 +550,7 @@ class InterfaceDiscovery
             // Channel toggles (default enabled to preserve old behavior)
             'telegram_enabled' => true,
             'webui_enabled' => true,
+            'mobile_enabled' => true,
 
             // Event toggles (default enabled)
             'interface_down' => true,
@@ -461,6 +570,7 @@ class InterfaceDiscovery
             'chat_id',
             'alert_telegram_enabled',
             'alert_webui_enabled',
+            'alert_mobile_enabled',
             'alert_interface_down',
             'alert_interface_up',
             'alert_interface_warning',
@@ -491,6 +601,10 @@ class InterfaceDiscovery
             }
             if ($name === 'alert_webui_enabled') {
                 $settings['webui_enabled'] = trim((string) $val) !== '0';
+                continue;
+            }
+            if ($name === 'alert_mobile_enabled') {
+                $settings['mobile_enabled'] = trim((string) $val) !== '0';
                 continue;
             }
 
@@ -571,11 +685,15 @@ class InterfaceDiscovery
             }
         }
 
-        // Mobile push (best-effort)
-        try {
-            $this->sendMobilePush($severity, $eventType, $logMessage, $deviceMeta, $ifaceMeta);
-        } catch (\Throwable $e) {
-            // Do not break polling if push fails.
+        // Mobile push (best-effort). Global toggle overrides per-user prefs:
+        // when the admin disables mobile_enabled, no push goes out even if
+        // individual users have push_enabled=true.
+        if (($settings['mobile_enabled'] ?? true) === true) {
+            try {
+                $this->sendMobilePush($severity, $eventType, $logMessage, $deviceMeta, $ifaceMeta);
+            } catch (\Throwable $e) {
+                // Do not break polling if push fails.
+            }
         }
 
         // Telegram

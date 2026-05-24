@@ -243,6 +243,19 @@ async function loadMapData() {
     }
 }
 
+// Rebind tooltip so the node name can either stick (selected) or only appear on hover.
+function setNodeTooltipPermanent(marker, permanent) {
+    if (!marker || !marker.nodeData) return;
+    marker.unbindTooltip();
+    marker.bindTooltip(marker.nodeData.node_name, {
+        permanent: permanent,
+        direction: 'top',
+        offset: [0, -28],
+        className: 'leaflet-node-label',
+        sticky: !permanent,
+    });
+}
+
 // Create node marker
 function createNodeMarker(node) {
     const icon = nodeIcons[node.node_type] || nodeIcons.router;
@@ -269,22 +282,17 @@ function createNodeMarker(node) {
         }),
         draggable: true
     }).addTo(map);
-    marker.bindTooltip(node.node_name, {
-        permanent:  false,
-        direction: 'top',
-        offset: [0, -28],
-        className: 'leaflet-node-label',
-        sticky: true 
-    });
+
+    // Store reference (must be set before binding tooltip — the helper reads nodeData.node_name)
+    marker.nodeData = node;
+    nodeMarkers.push(marker);
+    markerById.set(node.id, marker);
+
+    setNodeTooltipPermanent(marker, false);
 
     if (mapLocked || node.is_locked == 1) {
         marker.dragging.disable();
     }
-
-    // Store reference
-    marker.nodeData = node;
-    nodeMarkers.push(marker);
-    markerById.set(node.id, marker);
 
     // Add click event
     marker.on('click', function (e) {
@@ -537,15 +545,18 @@ function renderConnections() {
 
 // Select node and show details
 function selectNode(node) {
+    if (selectedNode && selectedNode.id !== node.id) {
+        const prevMarker = markerById.get(selectedNode.id);
+        if (prevMarker) setNodeTooltipPermanent(prevMarker, false);
+    }
+
     selectedNode = node;
     showNodeSidebar(node);
     highlightNode(node.id);
     const markerEl = document.querySelector(`.node-marker[data-node-id="${node.id}"]`);
     if (markerEl) markerEl.classList.add('show-label');
-    const marker = nodeMarkers.find(m => m.nodeData && m.nodeData.id === node.id);
-    if (marker && marker.getTooltip()) {
-        marker.openTooltip();
-    }
+    const marker = markerById.get(node.id);
+    if (marker) setNodeTooltipPermanent(marker, true);
 }
 
 // Show node details in sidebar
@@ -563,7 +574,7 @@ function showNodeSidebar(node) {
     if (node.interfaces && node.interfaces.length > 0) {
         interfacesHtml = `
             <div class="interfaces-section">
-                <h4><i class="fas fa-plug"></i> Active Interfaces</h4>
+                <h4><i class="fas fa-plug"></i> SFP Interfaces</h4>
                 <div class="table-responsive">
                     <table class="table">
                         <thead>
@@ -667,6 +678,10 @@ function showNodeSidebar(node) {
 // Close node sidebar
 function closeNodeSidebar() {
     document.getElementById('nodeSidebar').classList.remove('open');
+    if (selectedNode) {
+        const prevMarker = markerById.get(selectedNode.id);
+        if (prevMarker) setNodeTooltipPermanent(prevMarker, false);
+    }
     selectedNode = null;
     unhighlightAllNodes();
     document.querySelectorAll('.node-marker.show-label').forEach(el => el.classList.remove('show-label'));

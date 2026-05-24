@@ -23,11 +23,15 @@
     --border: #050505;
     --glass-border: 3px solid var(--border);
 
-    --sidebar: #111111;
-    --sidebar-title: #ffffff;
-    --sidebar-subtitle: rgba(255, 255, 255, 0.72);
-    --sidebar-link: rgba(255, 255, 255, 0.76);
-    --sidebar-link-hover: #ffffff;
+    --sidebar: #ffffff;
+    --sidebar-title: #050505;
+    --sidebar-subtitle: rgba(5, 5, 5, 0.72);
+    --sidebar-link: #050505;
+    --sidebar-link-hover: #050505;
+    --sidebar-link-bg: #f3f4f6;
+    --sidebar-link-hover-bg: #e5e7eb;
+    --sidebar-link-border: #050505;
+    --sidebar-version-color: rgba(5, 5, 5, 0.55);
     --sidebar-hover-bg: rgba(255, 225, 74, 0.16);
     --sidebar-active-bg: var(--primary);
     --sidebar-accent: var(--accent);
@@ -69,6 +73,10 @@
     --sidebar-subtitle: rgba(255, 255, 255, 0.72);
     --sidebar-link: rgba(255, 255, 255, 0.76);
     --sidebar-link-hover: #ffffff;
+    --sidebar-link-bg: #222222;
+    --sidebar-link-hover-bg: #333333;
+    --sidebar-link-border: rgba(255, 255, 255, 0.82);
+    --sidebar-version-color: rgba(255, 255, 255, 0.62);
     --sidebar-hover-bg: rgba(255, 225, 74, 0.14);
     --sidebar-active-bg: var(--primary);
     --sidebar-accent: var(--accent);
@@ -240,8 +248,8 @@ body[data-role="viewer"] .action-delete {
 
 .sidebar a {
     align-items: center;
-    background: #222222;
-    border: 3px solid rgba(255, 255, 255, 0.82);
+    background: var(--sidebar-link-bg);
+    border: 3px solid var(--sidebar-link-border);
     border-radius: var(--radius-md);
     color: var(--sidebar-link);
     display: flex;
@@ -255,15 +263,15 @@ body[data-role="viewer"] .action-delete {
 }
 
 .sidebar a i {
-    color: var(--primary);
+    color: var(--ink);
     font-size: 0.95rem;
     text-align: center;
     width: 20px;
 }
 
 .sidebar a:hover {
-    background: #333333;
-    color: #ffffff;
+    background: var(--sidebar-link-hover-bg);
+    color: var(--sidebar-link-hover);
     transform: translate(-2px, -2px);
 }
 
@@ -335,7 +343,7 @@ body[data-role="viewer"] .action-delete {
 }
 
 .sidebar-version {
-    color: rgba(255, 255, 255, 0.62);
+    color: var(--sidebar-version-color);
     text-align: center;
 }
 
