@@ -381,30 +381,68 @@ function refreshMobilePushTargets() {
         });
 }
 
+function previewPushImage(input) {
+    const file = input && input.files && input.files[0];
+    const wrap = document.getElementById('pushImagePreviewWrap');
+    const img = document.getElementById('pushImagePreview');
+    if (!file) {
+        clearPushImage();
+        return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+        showNotification('Ukuran gambar maksimal 2 MB', 'error');
+        clearPushImage();
+        return;
+    }
+    if (img && wrap) {
+        img.src = URL.createObjectURL(file);
+        wrap.style.display = 'block';
+    }
+}
+
+function clearPushImage() {
+    const input = document.getElementById('pushImage');
+    const wrap = document.getElementById('pushImagePreviewWrap');
+    const img = document.getElementById('pushImagePreview');
+    if (input) input.value = '';
+    if (img && img.src) { try { URL.revokeObjectURL(img.src); } catch (e) {} img.src = ''; }
+    if (wrap) wrap.style.display = 'none';
+}
+
 function sendMobilePush() {
     if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
 
     const title = (document.getElementById('pushTitle')?.value || '').trim();
     const body = (document.getElementById('pushBody')?.value || '').trim();
     const targetRaw = document.getElementById('pushTarget')?.value || 'all';
+    const imageFile = document.getElementById('pushImage')?.files?.[0] || null;
 
     if (!title || !body) {
         showNotification('Title dan message wajib diisi', 'error');
         return;
     }
-
-    let payload = { title, body, target: 'all' };
-    if (targetRaw.startsWith('user:')) {
-        payload.target = 'user';
-        payload.user_id = parseInt(targetRaw.slice(5), 10);
+    if (imageFile && imageFile.size > 2 * 1024 * 1024) {
+        showNotification('Ukuran gambar maksimal 2 MB', 'error');
+        return;
     }
+
+    const form = new FormData();
+    form.append('title', title);
+    form.append('body', body);
+    if (targetRaw.startsWith('user:')) {
+        form.append('target', 'user');
+        form.append('user_id', String(parseInt(targetRaw.slice(5), 10)));
+    } else {
+        form.append('target', 'all');
+    }
+    if (imageFile) form.append('image', imageFile);
 
     if (!confirm(`Kirim push ke target: ${targetRaw === 'all' ? 'All Devices' : targetRaw}?`)) return;
 
+    // Note: no Content-Type header — the browser sets the multipart boundary itself.
     fetch('api/mobile_push_send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: form,
     })
         .then(r => r.json().catch(() => ({})))
         .then(d => {
@@ -419,6 +457,7 @@ function sendMobilePush() {
 
             const bodyEl = document.getElementById('pushBody');
             if (bodyEl) bodyEl.value = '';
+            clearPushImage();
         })
         .catch(() => showNotification('Failed to send push', 'error'));
 }

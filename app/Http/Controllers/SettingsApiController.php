@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class SettingsApiController extends Controller
 {
@@ -215,16 +216,54 @@ class SettingsApiController extends Controller
             return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
         }
 
-        $title = trim((string) $request->json('title', ''));
-        $body = trim((string) $request->json('body', ''));
-        $target = (string) $request->json('target', 'all');
-        $userId = (int) $request->json('user_id', 0);
+        // Use input() so the same endpoint accepts both JSON and multipart/form-data
+        // (multipart is required when an image file is attached).
+        $title = trim((string) $request->input('title', ''));
+        $body = trim((string) $request->input('body', ''));
+        $target = (string) $request->input('target', 'all');
+        $userId = (int) $request->input('user_id', 0);
 
         if ($title === '' || $body === '') {
             return response()->json(['success' => false, 'error' => 'Title dan body wajib diisi'], 422);
         }
         if (mb_strlen($title) > 120 || mb_strlen($body) > 1000) {
             return response()->json(['success' => false, 'error' => 'Title max 120 / body max 1000 karakter'], 422);
+        }
+
+        // Optional image attachment. FCM needs a publicly reachable HTTPS URL, so we
+        // store the upload on the public disk and hand the resulting URL to FCM.
+        $imageUrl = '';
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $allowedExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+            $ext = strtolower((string) $image->getClientOriginalExtension());
+
+            if (!$image->isValid()) {
+                return response()->json(['success' => false, 'error' => 'Upload gambar gagal (file tidak valid)'], 422);
+            }
+            if (!in_array($ext, $allowedExt, true) || !str_starts_with((string) $image->getMimeType(), 'image/')) {
+                return response()->json(['success' => false, 'error' => 'Format gambar harus JPG, PNG, WEBP, atau GIF'], 422);
+            }
+            if ($image->getSize() > 2 * 1024 * 1024) {
+                return response()->json(['success' => false, 'error' => 'Ukuran gambar maksimal 2 MB'], 422);
+            }
+
+            $filename = 'push-' . date('Ymd-His') . '-' . Str::random(8) . '.' . $ext;
+            $path = $image->storeAs('push-images', $filename, 'public');
+            if ($path === false) {
+                return response()->json(['success' => false, 'error' => 'Gagal menyimpan gambar'], 500);
+            }
+
+            // Build the URL from the actual request host (the domain the admin is
+            // browsing), not from APP_URL. This avoids stale env cached in long-lived
+            // php-fpm workers and guarantees a host the mobile devices can reach.
+            // secure_url() always emits https, which FCM requires.
+            $imageUrl = secure_url('storage/' . ltrim($path, '/'));
+
+            if (!str_starts_with($imageUrl, 'https://')) {
+                Log::warning('Mobile push image URL is not HTTPS, skipping image', ['url' => $imageUrl]);
+                $imageUrl = '';
+            }
         }
 
         if (!Schema::hasTable('device_tokens')) {
@@ -265,6 +304,7 @@ class SettingsApiController extends Controller
                     title: $title,
                     body: $body,
                     data: $data,
+                    imageUrl: $imageUrl,
                 );
                 $sent++;
             } catch (\Throwable $e) {

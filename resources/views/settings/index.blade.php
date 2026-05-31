@@ -219,6 +219,20 @@
             <textarea id="pushBody" rows="3" maxlength="1000" placeholder="Isi pesan yang akan muncul di notifikasi mobile..."></textarea>
         </div>
 
+        <div class="form-group">
+            <label>Gambar (opsional)</label>
+            <input id="pushImage" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onchange="previewPushImage(this)">
+            <div class="help">Gambar besar di notifikasi (JPG/PNG/WEBP/GIF, maks 2 MB).</div>
+            <div id="pushImagePreviewWrap" style="display:none; margin-top:10px;">
+                <img id="pushImagePreview" src="" alt="Preview" style="max-width:100%; max-height:180px; border-radius:8px; border:2px solid var(--border, #000);">
+                <div style="margin-top:6px;">
+                    <button type="button" class="btn btn-outline" onclick="clearPushImage()">
+                        <i class="fas fa-xmark"></i> Hapus Gambar
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div class="modal-actions">
             <button class="btn action-edit" onclick="sendMobilePush()">
                 <i class="fas fa-paper-plane"></i> Send Notification

@@ -103,22 +103,33 @@ class FcmService
      * @param array<string,string> $data
      * @return array<string,mixed>
      */
-    public function sendToToken(string $deviceToken, string $title, string $body, array $data = []): array
+    public function sendToToken(string $deviceToken, string $title, string $body, array $data = [], string $imageUrl = ''): array
     {
         $creds = $this->credentials();
         $accessToken = $this->googleAccessToken();
 
+        $notification = [
+            'title' => $title,
+            'body' => $body,
+        ];
+
+        $android = [
+            'priority' => 'HIGH',
+        ];
+
+        // FCM renders the image as an expandable "big picture" on Android/iOS.
+        // It must be a publicly reachable HTTPS URL.
+        if ($imageUrl !== '') {
+            $notification['image'] = $imageUrl;
+            $android['notification'] = ['image' => $imageUrl];
+        }
+
         $payload = [
             'message' => [
                 'token' => $deviceToken,
-                'notification' => [
-                    'title' => $title,
-                    'body' => $body,
-                ],
+                'notification' => $notification,
                 'data' => (object) $data,
-                'android' => [
-                    'priority' => 'HIGH',
-                ],
+                'android' => $android,
             ],
         ];
 
