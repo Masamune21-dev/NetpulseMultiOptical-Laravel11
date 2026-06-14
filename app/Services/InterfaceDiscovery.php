@@ -426,6 +426,9 @@ class InterfaceDiscovery
                 (device_id, if_index, if_name, if_alias, if_description, optical_index, rx_power, tx_power, oper_status, last_seen, is_sfp, interface_type, if_speed, in_octets, out_octets, in_rate_bps, out_rate_bps, counters_polled_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE
+                    if_name=VALUES(if_name),
+                    if_alias=VALUES(if_alias),
+                    if_description=VALUES(if_description),
                     optical_index=VALUES(optical_index),
                     rx_power=VALUES(rx_power),
                     tx_power=VALUES(tx_power),
