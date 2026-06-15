@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -113,6 +114,39 @@ class SlaController extends Controller
             }
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
+    /** GET /api/sla/export-pdf — branded PDF of the per-interface SLA summary. */
+    public function exportPdf(Request $request)
+    {
+        $days = $this->days($request);
+        $json = $this->summary($request)->getData(true);
+
+        $rows = array_map(function ($r) {
+            $avail = $r['availability'];
+            $r['downtime_h'] = $this->humanDuration((int) $r['down_sec']);
+            $r['avail_str'] = $avail !== null ? number_format($avail, 3) . '%' : '—';
+            $r['avail_class'] = $avail === null ? '' : ($avail >= 99.9 ? 'ok' : ($avail >= 99 ? 'warn' : 'bad'));
+            return $r;
+        }, $json['interfaces'] ?? []);
+
+        $deviceId = (int) $request->query('device_id', 0);
+        $scope = 'All devices';
+        if ($deviceId > 0) {
+            $scope = (string) (DB::table('snmp_devices')->where('id', $deviceId)->value('device_name') ?? ('Device #' . $deviceId));
+        }
+
+        $pdf = Pdf::loadView('sla.pdf', [
+            'days' => $days,
+            'rows' => $rows,
+            'totals' => $json['totals'] ?? [],
+            'totalDowntime' => $this->humanDuration((int) ($json['totals']['down_sec'] ?? 0)),
+            'generatedAt' => date('Y-m-d H:i'),
+            'scope' => $scope,
+            'search' => trim((string) $request->query('q', '')),
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->download('sla_report_' . $days . 'd_' . date('Ymd_His') . '.pdf');
     }
 
     private function humanDuration(int $sec): string

@@ -17,7 +17,8 @@
         </div>
         <select id="slaDevice" class="sla-select"><option value="">All devices</option></select>
         <input type="text" id="slaSearch" class="sla-input" placeholder="Search interface / alias…">
-        <button type="button" id="slaExport" class="sla-export"><i class="fas fa-file-csv"></i> Export</button>
+        <button type="button" id="slaExport" class="sla-export"><i class="fas fa-file-csv"></i> CSV</button>
+        <button type="button" id="slaExportPdf" class="sla-export"><i class="fas fa-file-pdf"></i> PDF</button>
     </div>
 
     <div class="sla-stats">

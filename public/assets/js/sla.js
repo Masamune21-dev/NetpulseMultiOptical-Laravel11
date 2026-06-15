@@ -32,13 +32,16 @@
             searchTimer = setTimeout(() => { state.q = search.value.trim(); state.expanded.clear(); load(); }, 300);
         });
 
-        const exportBtn = document.getElementById('slaExport');
-        if (exportBtn) exportBtn.addEventListener('click', () => {
+        const exportUrl = (path) => {
             const params = new URLSearchParams({ days: state.days });
             if (state.deviceId) params.set('device_id', state.deviceId);
             if (state.q) params.set('q', state.q);
-            window.location = `/api/sla/export?${params.toString()}`;
-        });
+            return `${path}?${params.toString()}`;
+        };
+        const csvBtn = document.getElementById('slaExport');
+        if (csvBtn) csvBtn.addEventListener('click', () => { window.location = exportUrl('/api/sla/export'); });
+        const pdfBtn = document.getElementById('slaExportPdf');
+        if (pdfBtn) pdfBtn.addEventListener('click', () => { window.open(exportUrl('/api/sla/export-pdf'), '_blank'); });
     }
 
     function loadDevices() {
