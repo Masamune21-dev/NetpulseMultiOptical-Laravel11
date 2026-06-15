@@ -393,9 +393,20 @@ class InterfaceDiscovery
                     'tx_power' => $tx,
                 ];
 
+                $linkWentDown = $prevKnown && $prevLinkUp && !$linkUp && ($prevHadOptic || $hasOpticUp);
+                $linkCameUp = $prevKnown && !$prevLinkUp && $linkUp && ($prevHadOptic || $hasOpticUp);
+
+                // Record the down/up transition for SLA/uptime reporting. Done
+                // here (not in emitAlert) so it stays accurate even when alerts
+                // are throttled by flap-cooldown or silenced by maintenance.
+                if ($linkWentDown) {
+                    $this->recordDownEvent($deviceId, $ifIdx, $name, $alias, (string) ($device->device_name ?? ''), true);
+                } elseif ($linkCameUp) {
+                    $this->recordDownEvent($deviceId, $ifIdx, $name, $alias, (string) ($device->device_name ?? ''), false);
+                }
+
                 if (
-                    $prevKnown && $prevLinkUp && !$linkUp
-                    && ($prevHadOptic || $hasOpticUp)
+                    $linkWentDown
                     && ($alertSettings['interface_down'] ?? true)
                 ) {
                     $tg = "🔴 LINK DOWN\n📟 Device: {$deviceLabel}\n🔌 Interface: {$ifaceLabel}\n🕒 Time: {$timeLabel}";
@@ -409,8 +420,7 @@ class InterfaceDiscovery
                         $tg
                     );
                 } elseif (
-                    $prevKnown && !$prevLinkUp && $linkUp
-                    && ($prevHadOptic || $hasOpticUp)
+                    $linkCameUp
                     && ($alertSettings['interface_up'] ?? true)
                 ) {
                     $tg = "🟢 LINK UP\n📟 Device: {$deviceLabel}\n🔌 Interface: {$ifaceLabel}\n📡 RX: " . ($rx !== null ? "{$rx} dBm" : 'N/A') . "\n🕒 Time: {$timeLabel}";
@@ -563,6 +573,57 @@ class InterfaceDiscovery
             'chat_id' => $s['chat_id'] ?? '',
             'rx_threshold' => (float) ($s['rx_warn_low'] ?? -25.0),
         ];
+    }
+
+    /**
+     * Record an interface down/up transition into interface_down_events for
+     * SLA/uptime reporting. On down we open an event (if none is open); on up
+     * we close the latest open event and compute its duration. Best-effort —
+     * never breaks polling.
+     */
+    private function recordDownEvent(int $deviceId, int $ifIndex, string $ifName, string $ifAlias, string $deviceName, bool $down): void
+    {
+        try {
+            if (!Schema::hasTable('interface_down_events')) {
+                return;
+            }
+
+            $base = DB::table('interface_down_events')
+                ->where('device_id', $deviceId)
+                ->where('if_index', $ifIndex)
+                ->whereNull('up_at');
+
+            if ($down) {
+                // Don't open a second event if one is already open.
+                if ((clone $base)->exists()) {
+                    return;
+                }
+                DB::table('interface_down_events')->insert([
+                    'device_id' => $deviceId,
+                    'if_index' => $ifIndex,
+                    'if_name' => $ifName,
+                    'if_alias' => $ifAlias,
+                    'device_name' => $deviceName,
+                    'down_at' => now(),
+                    'up_at' => null,
+                    'duration_sec' => null,
+                    'created_at' => now(),
+                ]);
+                return;
+            }
+
+            // Up: close the most recent open event.
+            $open = (clone $base)->orderByDesc('down_at')->first(['id', 'down_at']);
+            if ($open) {
+                $dur = max(0, time() - strtotime((string) $open->down_at));
+                DB::table('interface_down_events')->where('id', $open->id)->update([
+                    'up_at' => now(),
+                    'duration_sec' => $dur,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // Never let SLA recording break polling.
+        }
     }
 
     /**

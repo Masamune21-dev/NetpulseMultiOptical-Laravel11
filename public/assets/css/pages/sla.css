@@ -1,0 +1,95 @@
+/* SLA / uptime report page */
+
+.sla-toolbar {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.sla-ranges {
+    display: inline-flex;
+    gap: 4px;
+}
+.sla-range {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-soft);
+    cursor: pointer;
+    font-weight: 800;
+    padding: 7px 14px;
+}
+.sla-range.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.sla-select,
+.sla-input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    padding: 7px 10px;
+}
+.sla-input { flex: 1; min-width: 160px; }
+
+.sla-stats {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, 1fr);
+    margin-bottom: 14px;
+}
+.sla-stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+}
+.sla-stat-k { color: var(--text-soft); font-size: 0.76rem; font-weight: 800; text-transform: uppercase; }
+.sla-stat-v { color: var(--text); font-size: 1.4rem; font-weight: 800; }
+
+.sla-period {
+    color: var(--text-soft);
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-left: 6px;
+}
+
+.sla-ifname { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.sla-ifsub { color: var(--text-soft); font-size: 0.74rem; }
+
+.sla-ok { color: #16a34a; font-weight: 800; }
+.sla-warn { color: #d97706; font-weight: 800; }
+.sla-bad { color: var(--danger); font-weight: 800; }
+
+.sla-badge {
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    text-transform: uppercase;
+}
+.sla-badge-down { background: var(--danger); color: #fff; }
+
+.sla-detail-box { padding: 8px 4px 4px; }
+.sla-detail-table { border-collapse: collapse; width: 100%; }
+.sla-detail-table th,
+.sla-detail-table td {
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    text-align: left;
+}
+.sla-detail-table th { color: var(--text-soft); font-weight: 800; }
+.sla-empty { color: var(--text-soft); font-size: 0.82rem; padding: 8px; }
+
+@media (max-width: 720px) {
+    .sla-stats { grid-template-columns: 1fr; }
+}

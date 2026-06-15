@@ -20,6 +20,7 @@ use App\Http\Controllers\UsersApiController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\AlertLogsApiController;
 use App\Http\Controllers\AlertMutesController;
+use App\Http\Controllers\SlaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -59,6 +60,13 @@ Route::middleware(['legacy.auth'])->group(function () {
         ->middleware('legacy.role:admin');
 
     Route::get('/interfaces', [InterfacesController::class, 'index']);
+
+    // SLA / uptime report.
+    Route::get('/sla', [SlaController::class, 'index']);
+    Route::get('/api/sla', [SlaController::class, 'summary'])
+        ->middleware('legacy.role:admin,technician,viewer');
+    Route::get('/api/sla/events', [SlaController::class, 'events'])
+        ->middleware('legacy.role:admin,technician,viewer');
 
     Route::get('/api/interfaces', [InterfacesApiController::class, 'index']);
     Route::get('/api/interfaces/all', [InterfacesListApiController::class, 'index']);
