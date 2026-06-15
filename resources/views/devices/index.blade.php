@@ -22,9 +22,15 @@
     <div class="dev-card">
         <div class="dev-card-head">
             <h3><i class="fas fa-server"></i> SNMP Devices</h3>
-            <button class="btn action-create" onclick="openAddDevice()" title="Add Device" style="width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:9px;flex-shrink:0">
-                <i class="fas fa-plus"></i>
-            </button>
+            <div style="display:flex;gap:8px;align-items:center">
+                <button id="globalMuteBtn" class="btn" onclick="toggleGlobalMute()" title="Mute all alerts (maintenance)"
+                        style="height:34px;padding:0 12px;display:flex;align-items:center;gap:6px;border-radius:9px;flex-shrink:0">
+                    <i class="fas fa-bell"></i> <span id="globalMuteLabel">Alerts on</span>
+                </button>
+                <button class="btn action-create" onclick="openAddDevice()" title="Add Device" style="width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:9px;flex-shrink:0">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
         </div>
         <div class="dev-table-wrap">
             <table class="table" id="deviceTable">

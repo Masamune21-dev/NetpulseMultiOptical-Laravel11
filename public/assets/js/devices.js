@@ -48,7 +48,64 @@ function openTab(id) {
 // ===============================
 // SNMP DEVICE LIST
 // ===============================
+// Maintenance mute state (global + per-device), refreshed with the device list.
+let devMutes = { global: false, ids: new Set() };
+
+function loadDeviceMutes() {
+    return fetch('/api/alert_mutes', { credentials: 'same-origin' })
+        .then(r => r.ok ? r.json() : null)
+        .then(j => {
+            devMutes = {
+                global: !!(j && j.global && j.global.muted),
+                ids: new Set((j && j.devices ? j.devices : []).map(d => d.device_id)),
+            };
+            updateGlobalMuteBtn();
+        })
+        .catch(() => {});
+}
+
+function updateGlobalMuteBtn() {
+    const btn = document.getElementById('globalMuteBtn');
+    const label = document.getElementById('globalMuteLabel');
+    if (!btn || !label) return;
+    const muted = devMutes.global;
+    label.textContent = muted ? 'All muted' : 'Alerts on';
+    btn.style.background = muted ? 'var(--danger)' : '';
+    btn.style.color = muted ? '#fff' : '';
+    btn.querySelector('i').className = muted ? 'fas fa-bell-slash' : 'fas fa-bell';
+    btn.title = muted ? 'Unmute all alerts' : 'Mute all alerts (maintenance)';
+}
+
+function toggleGlobalMute() {
+    if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
+    const muted = !devMutes.global;
+    fetch('/api/alert_mutes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ device_id: 0, muted }),
+    })
+        .then(r => r.json())
+        .then(() => { showNotification(muted ? 'All alerts muted' : 'Alerts resumed', 'success'); loadDevices(); })
+        .catch(() => showNotification('Failed to update mute', 'error'));
+}
+
+function toggleDeviceMute(id, currentlyMuted) {
+    if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
+    const muted = !currentlyMuted;
+    fetch('/api/alert_mutes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ device_id: id, muted }),
+    })
+        .then(r => r.json())
+        .then(() => { showNotification(muted ? 'Device alerts muted' : 'Device alerts unmuted', 'success'); loadDevices(); })
+        .catch(() => showNotification('Failed to update mute', 'error'));
+}
+
 function loadDevices() {
+    loadDeviceMutes().finally(() => {
     fetch('/api/devices')
         .then(r => r.ok ? r.json() : Promise.reject(r))
         .then(data => {
@@ -95,6 +152,9 @@ function loadDevices() {
                             <button class="btn btn-icon btn-info" onclick="testSNMP(${d.id})" title="Test SNMP">
                                 <i class="fas fa-plug"></i>
                             </button>
+                            <button class="btn btn-icon ${devMutes.ids.has(d.id) ? 'btn-danger' : ''}" onclick="toggleDeviceMute(${d.id}, ${devMutes.ids.has(d.id) ? 1 : 0})" title="${devMutes.ids.has(d.id) ? 'Unmute alerts' : 'Mute alerts (maintenance)'}">
+                                <i class="fas ${devMutes.ids.has(d.id) ? 'fa-bell-slash' : 'fa-bell'}"></i>
+                            </button>
                             <button class="btn btn-icon btn-danger action-delete" onclick="deleteDevice(${d.id})" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -108,6 +168,7 @@ function loadDevices() {
         .catch(() => {
             showNotification('Gagal memuat device', 'error');
         });
+    });
 }
 
 
