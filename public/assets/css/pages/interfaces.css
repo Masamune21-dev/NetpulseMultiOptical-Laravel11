@@ -493,3 +493,101 @@
         gap: 10px;
     }
 }
+
+/* ---- RX threshold override modal ---- */
+.if-thr-modal-box {
+    max-width: 460px;
+}
+
+.if-thr-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 10px 0;
+    font-size: 0.82rem;
+    color: var(--text-soft);
+}
+.if-thr-info b {
+    color: var(--text);
+}
+
+.if-thr-suggest {
+    align-items: center;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius-sm);
+    display: flex;
+    font-size: 0.8rem;
+    gap: 10px;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 8px 10px;
+}
+
+.if-thr-apply {
+    background: var(--primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #fff;
+    cursor: pointer;
+    font-weight: 800;
+    padding: 5px 10px;
+    white-space: nowrap;
+}
+
+.if-thr-form {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(3, 1fr);
+}
+.if-thr-form label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.74rem;
+    font-weight: 800;
+    gap: 4px;
+    color: var(--text-soft);
+}
+.if-thr-form input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    padding: 7px 8px;
+    width: 100%;
+}
+.if-thr-hint {
+    color: var(--text-soft);
+    font-size: 0.74rem;
+    grid-column: 1 / -1;
+    margin: 2px 0 0;
+}
+
+.if-thr-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 14px;
+}
+.if-thr-save {
+    background: var(--primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #fff;
+    cursor: pointer;
+    font-weight: 800;
+    padding: 8px 16px;
+}
+.if-thr-reset {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-soft);
+    cursor: pointer;
+    font-weight: 800;
+    padding: 8px 16px;
+}
+
+@media (max-width: 640px) {
+    .if-thr-form { grid-template-columns: 1fr; }
+}

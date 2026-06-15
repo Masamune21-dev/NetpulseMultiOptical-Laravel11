@@ -140,6 +140,46 @@
     </div>
 </div>
 
+{{-- RX Threshold Override Modal --}}
+<div class="modal if-thr-modal" id="ifThrModal">
+    <div class="modal-box if-thr-modal-box">
+        <button class="modal-close" onclick="ifCloseThrModal()">&times;</button>
+
+        <div class="if-tm-head">
+            <div class="if-tm-title">
+                <i class="fas fa-sliders"></i>
+                <span id="ifThrIfName">—</span>
+            </div>
+        </div>
+        <div class="if-tm-sub">
+            <span id="ifThrAlias">—</span>
+            <span class="if-tm-device" id="ifThrDevice"></span>
+        </div>
+
+        <div class="if-thr-info">
+            <span>Current RX: <b id="ifThrCurRx">—</b></span>
+            <span>Global: warn <b id="ifThrGWarn">—</b> · crit <b id="ifThrGCrit">—</b> · down <b id="ifThrGDown">—</b></span>
+        </div>
+
+        <div class="if-thr-suggest" id="ifThrSuggestBox" style="display:none">
+            <span id="ifThrSuggestText">—</span>
+            <button type="button" class="if-thr-apply" id="ifThrApplyBtn">Use suggestion</button>
+        </div>
+
+        <div class="if-thr-form">
+            <label>Warning (dBm)<input type="number" step="0.1" id="ifThrWarn"></label>
+            <label>Critical (dBm)<input type="number" step="0.1" id="ifThrCrit"></label>
+            <label>Down (dBm)<input type="number" step="0.1" id="ifThrDown"></label>
+            <p class="if-thr-hint">Leave empty to use the global value (shown as placeholder).</p>
+        </div>
+
+        <div class="if-thr-actions" id="ifThrActions">
+            <button type="button" class="if-thr-save" id="ifThrSaveBtn"><i class="fas fa-floppy-disk"></i> Save</button>
+            <button type="button" class="if-thr-reset" id="ifThrResetBtn">Reset to global</button>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')

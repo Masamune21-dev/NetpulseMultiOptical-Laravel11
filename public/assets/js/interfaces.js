@@ -180,14 +180,23 @@
                                 data-device="${r.device_id}" data-ifindex="${r.if_index}">
                             <i class="fas fa-chart-line"></i>
                         </button>
+                        <button type="button" class="if-action-btn if-thr-btn" title="RX thresholds"
+                                data-device="${r.device_id}" data-ifindex="${r.if_index}">
+                            <i class="fas fa-sliders"></i>
+                        </button>
                     </td>
                 </tr>
             `;
         }).join('');
 
-        tbody.querySelectorAll('.if-action-btn').forEach(btn => {
+        tbody.querySelectorAll('.if-action-btn:not(.if-thr-btn)').forEach(btn => {
             btn.addEventListener('click', () => {
                 openTrafficModal(parseInt(btn.dataset.device, 10), parseInt(btn.dataset.ifindex, 10));
+            });
+        });
+        tbody.querySelectorAll('.if-thr-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                openThresholdModal(parseInt(btn.dataset.device, 10), parseInt(btn.dataset.ifindex, 10));
             });
         });
     }
@@ -513,7 +522,138 @@
             if (e.key === 'Escape') {
                 const m = document.getElementById('ifTrafficModal');
                 if (m && m.style.display === 'flex') ifCloseTrafficModal();
+                const t = document.getElementById('ifThrModal');
+                if (t && t.style.display === 'flex') ifCloseThrModal();
             }
         });
+    });
+
+    /* ---------------- RX threshold override modal ---------------- */
+
+    const thrState = { deviceId: null, ifIndex: null, suggestion: null };
+
+    const fmtDbm = (v) => (v === null || v === undefined || v === '') ? '—' : Number(v).toFixed(1);
+
+    function isAdmin() {
+        return (document.body.dataset.role || '') === 'admin';
+    }
+
+    window.openThresholdModal = function (deviceId, ifIndex) {
+        thrState.deviceId = deviceId;
+        thrState.ifIndex = ifIndex;
+        thrState.suggestion = null;
+
+        const modal = document.getElementById('ifThrModal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+
+        ['ifThrWarn', 'ifThrCrit', 'ifThrDown'].forEach(id => { document.getElementById(id).value = ''; });
+        document.getElementById('ifThrSuggestBox').style.display = 'none';
+
+        // View-only for non-admins.
+        const admin = isAdmin();
+        document.getElementById('ifThrActions').style.display = admin ? '' : 'none';
+        ['ifThrWarn', 'ifThrCrit', 'ifThrDown'].forEach(id => { document.getElementById(id).disabled = !admin; });
+
+        fetch(`/api/interfaces/thresholds?device_id=${deviceId}&if_index=${ifIndex}`, { credentials: 'same-origin' })
+            .then(r => r.json())
+            .then(json => {
+                if (!json || json.success === false) throw new Error((json && json.error) || 'Failed to load');
+                const m = json.meta || {};
+                const g = json.global || {};
+                const o = json.override || {};
+
+                document.getElementById('ifThrIfName').textContent = m.if_name || ('ifIndex ' + ifIndex);
+                document.getElementById('ifThrAlias').textContent = m.if_alias || '—';
+                document.getElementById('ifThrDevice').textContent = m.device_name || '';
+                document.getElementById('ifThrCurRx').textContent = m.current_rx !== null && m.current_rx !== undefined ? fmtDbm(m.current_rx) + ' dBm' : '—';
+                document.getElementById('ifThrGWarn').textContent = fmtDbm(g.rx_warn_high);
+                document.getElementById('ifThrGCrit').textContent = fmtDbm(g.rx_warn_low);
+                document.getElementById('ifThrGDown').textContent = fmtDbm(g.rx_down_threshold);
+
+                // Globals as placeholders; current overrides as values.
+                const w = document.getElementById('ifThrWarn');
+                const c = document.getElementById('ifThrCrit');
+                const d = document.getElementById('ifThrDown');
+                w.placeholder = fmtDbm(g.rx_warn_high);
+                c.placeholder = fmtDbm(g.rx_warn_low);
+                d.placeholder = fmtDbm(g.rx_down_threshold);
+                if (o.rx_warn_high !== null && o.rx_warn_high !== undefined) w.value = o.rx_warn_high;
+                if (o.rx_warn_low !== null && o.rx_warn_low !== undefined) c.value = o.rx_warn_low;
+                if (o.rx_down_threshold !== null && o.rx_down_threshold !== undefined) d.value = o.rx_down_threshold;
+
+                const sug = json.suggestion || {};
+                if (sug.available) {
+                    thrState.suggestion = sug;
+                    document.getElementById('ifThrSuggestText').textContent =
+                        `Baseline ${fmtDbm(sug.baseline_rx)} dBm (${sug.based_on_days}d) → warn ${fmtDbm(sug.rx_warn_high)} · crit ${fmtDbm(sug.rx_warn_low)}`;
+                    document.getElementById('ifThrSuggestBox').style.display = isAdmin() ? 'flex' : 'none';
+                }
+            })
+            .catch(err => notify(err.message || 'Failed to load thresholds', 'error'));
+    };
+
+    window.ifCloseThrModal = function () {
+        const modal = document.getElementById('ifThrModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    function notify(msg, type) {
+        if (typeof showNotification === 'function') showNotification(msg, type || 'info');
+    }
+
+    function thrInputVal(id) {
+        const v = document.getElementById(id).value.trim();
+        return v === '' ? null : Number(v);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const apply = document.getElementById('ifThrApplyBtn');
+        if (apply) apply.addEventListener('click', () => {
+            const s = thrState.suggestion;
+            if (!s) return;
+            document.getElementById('ifThrWarn').value = s.rx_warn_high;
+            document.getElementById('ifThrCrit').value = s.rx_warn_low;
+            document.getElementById('ifThrDown').value = '';
+        });
+
+        const save = document.getElementById('ifThrSaveBtn');
+        if (save) save.addEventListener('click', () => {
+            if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
+            fetch('/api/interfaces/thresholds', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    device_id: thrState.deviceId,
+                    if_index: thrState.ifIndex,
+                    rx_warn_high: thrInputVal('ifThrWarn'),
+                    rx_warn_low: thrInputVal('ifThrCrit'),
+                    rx_down_threshold: thrInputVal('ifThrDown'),
+                }),
+            })
+                .then(r => r.json())
+                .then(json => {
+                    if (!json || json.success === false) throw new Error((json && json.error) || 'Save failed');
+                    notify(json.cleared ? 'Thresholds reset to global' : 'Thresholds saved', 'success');
+                    ifCloseThrModal();
+                })
+                .catch(err => notify(err.message || 'Save failed', 'error'));
+        });
+
+        const reset = document.getElementById('ifThrResetBtn');
+        if (reset) reset.addEventListener('click', () => {
+            if (window.roleUtils && !window.roleUtils.requireAdmin()) return;
+            fetch(`/api/interfaces/thresholds?device_id=${thrState.deviceId}&if_index=${thrState.ifIndex}`, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+            })
+                .then(r => r.json())
+                .then(() => { notify('Thresholds reset to global', 'success'); ifCloseThrModal(); })
+                .catch(err => notify(err.message || 'Reset failed', 'error'));
+        });
+
+        const modal = document.getElementById('ifThrModal');
+        if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) ifCloseThrModal(); });
     });
 })();
