@@ -86,6 +86,56 @@ class SlaController extends Controller
         ]);
     }
 
+    /** GET /api/sla/export — CSV of the per-interface SLA summary. */
+    public function export(Request $request)
+    {
+        $days = $this->days($request);
+        $json = $this->summary($request)->getData(true);
+        $rows = $json['interfaces'] ?? [];
+
+        $filename = 'sla_report_' . $days . 'd_' . date('Ymd_His') . '.csv';
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Device', 'Interface', 'Alias', 'Down count', 'Total downtime', 'Downtime (sec)', 'Availability %', 'Status', 'Last down']);
+            foreach ($rows as $r) {
+                fputcsv($out, [
+                    $r['device_name'],
+                    $r['if_name'],
+                    $r['if_alias'],
+                    $r['down_count'],
+                    $this->humanDuration((int) $r['down_sec']),
+                    $r['down_sec'],
+                    $r['availability'] !== null ? number_format($r['availability'], 3) : '',
+                    $r['still_down'] ? 'DOWN' : 'up',
+                    $r['last_down_at'],
+                ]);
+            }
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
+    private function humanDuration(int $sec): string
+    {
+        if ($sec < 60) {
+            return $sec . 's';
+        }
+        $d = intdiv($sec, 86400);
+        $h = intdiv($sec % 86400, 3600);
+        $m = intdiv($sec % 3600, 60);
+        $parts = [];
+        if ($d) {
+            $parts[] = $d . 'd';
+        }
+        if ($h) {
+            $parts[] = $h . 'h';
+        }
+        if ($m) {
+            $parts[] = $m . 'm';
+        }
+        return $parts ? implode(' ', $parts) : '0m';
+    }
+
     /** GET /api/sla/events — each down event for one interface over the period. */
     public function events(Request $request)
     {

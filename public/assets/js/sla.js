@@ -31,6 +31,14 @@
             clearTimeout(searchTimer);
             searchTimer = setTimeout(() => { state.q = search.value.trim(); state.expanded.clear(); load(); }, 300);
         });
+
+        const exportBtn = document.getElementById('slaExport');
+        if (exportBtn) exportBtn.addEventListener('click', () => {
+            const params = new URLSearchParams({ days: state.days });
+            if (state.deviceId) params.set('device_id', state.deviceId);
+            if (state.q) params.set('q', state.q);
+            window.location = `/api/sla/export?${params.toString()}`;
+        });
     }
 
     function loadDevices() {

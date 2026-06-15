@@ -67,6 +67,8 @@ Route::middleware(['legacy.auth'])->group(function () {
         ->middleware('legacy.role:admin,technician,viewer');
     Route::get('/api/sla/events', [SlaController::class, 'events'])
         ->middleware('legacy.role:admin,technician,viewer');
+    Route::get('/api/sla/export', [SlaController::class, 'export'])
+        ->middleware('legacy.role:admin,technician,viewer');
 
     Route::get('/api/interfaces', [InterfacesApiController::class, 'index']);
     Route::get('/api/interfaces/all', [InterfacesListApiController::class, 'index']);
