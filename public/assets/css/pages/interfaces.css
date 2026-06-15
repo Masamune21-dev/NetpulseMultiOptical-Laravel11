@@ -271,6 +271,7 @@
 ==================================================== */
 .if-action-cell {
     text-align: center;
+    white-space: nowrap;
 }
 
 .if-action-btn {
@@ -286,6 +287,15 @@
     justify-content: center;
     transition: transform 0.08s ease;
     width: 32px;
+}
+
+.if-action-btn + .if-action-btn {
+    margin-left: 6px;
+}
+
+/* threshold button gets its own accent so the two actions aren't the same colour */
+.if-action-btn.if-thr-btn {
+    background: var(--accent);
 }
 
 .if-action-btn:hover {
