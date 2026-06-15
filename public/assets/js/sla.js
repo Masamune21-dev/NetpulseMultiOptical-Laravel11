@@ -140,8 +140,17 @@
             .then(r => r.json())
             .then(json => {
                 const ev = (json && json.events) || [];
-                if (!ev.length) { box.innerHTML = '<div class="sla-empty">No events.</div>'; return; }
-                box.innerHTML = `
+                const exp = new URLSearchParams({ days: state.days, device_id: row.dataset.device, if_index: row.dataset.ifindex }).toString();
+                const bar = `
+                    <div class="sla-detail-bar">
+                        <span class="sla-detail-title">All down events</span>
+                        <span class="sla-detail-actions">
+                            <button class="sla-export sla-export-sm" onclick="window.location='/api/sla/interface/export?${exp}'"><i class="fas fa-file-csv"></i> CSV</button>
+                            <button class="sla-export sla-export-sm" onclick="window.open('/api/sla/interface/export-pdf?${exp}','_blank')"><i class="fas fa-file-pdf"></i> PDF</button>
+                        </span>
+                    </div>`;
+                if (!ev.length) { box.innerHTML = bar + '<div class="sla-empty">No events.</div>'; return; }
+                box.innerHTML = bar + `
                     <table class="sla-detail-table">
                         <thead><tr><th>#</th><th>Down at</th><th>Up at</th><th>Duration</th></tr></thead>
                         <tbody>

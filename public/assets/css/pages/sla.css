@@ -149,3 +149,23 @@
     .sla-stats { grid-template-columns: 1fr; }
     .sla-input { min-width: 120px; }
 }
+
+/* Per-interface drilldown export bar */
+.sla-detail-bar {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.sla-detail-title {
+    color: var(--text-soft);
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+.sla-detail-actions { display: inline-flex; gap: 6px; }
+.sla-export-sm {
+    font-size: 0.68rem;
+    padding: 5px 10px;
+}
