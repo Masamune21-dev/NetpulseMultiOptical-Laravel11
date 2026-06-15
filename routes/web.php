@@ -19,6 +19,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\UsersApiController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\AlertLogsApiController;
+use App\Http\Controllers\AlertMutesController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -69,6 +70,14 @@ Route::middleware(['legacy.auth'])->group(function () {
     Route::post('/api/interfaces/thresholds', [InterfaceThresholdsController::class, 'save'])
         ->middleware('legacy.role:admin');
     Route::delete('/api/interfaces/thresholds', [InterfaceThresholdsController::class, 'clear'])
+        ->middleware('legacy.role:admin');
+
+    // Maintenance-window alert muting (per-device + global).
+    Route::get('/api/alert_mutes', [AlertMutesController::class, 'index'])
+        ->middleware('legacy.role:admin,technician,viewer');
+    Route::post('/api/alert_mutes', [AlertMutesController::class, 'save'])
+        ->middleware('legacy.role:admin');
+    Route::delete('/api/alert_mutes', [AlertMutesController::class, 'clear'])
         ->middleware('legacy.role:admin');
 
     Route::get('/api/monitoring_devices', [MonitoringApiController::class, 'devices']);

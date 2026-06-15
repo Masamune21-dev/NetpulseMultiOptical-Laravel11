@@ -615,6 +615,10 @@ class InterfaceDiscovery
             'rx_warn_high' => -18.0,
             'rx_warn_low' => -25.0,
             'rx_down_threshold' => -40.0,
+
+            // Flap/rate cooldown: min minutes between repeated alerts of the
+            // same collapsed category for the same device/interface.
+            'rate_limit_min' => 5,
         ];
 
         $keys = [
@@ -632,6 +636,7 @@ class InterfaceDiscovery
             'alert_rx_warning_high',
             'alert_rx_warning_low',
             'alert_rx_down_threshold',
+            'alert_rate_limit_min',
         ];
 
         $rows = DB::table('settings')->whereIn('name', $keys)->get();
@@ -698,6 +703,10 @@ class InterfaceDiscovery
                 $settings['rx_down_threshold'] = (float) $val;
                 continue;
             }
+            if ($name === 'alert_rate_limit_min' && is_numeric($val)) {
+                $settings['rate_limit_min'] = max(0, (int) $val);
+                continue;
+            }
         }
 
         return $settings;
@@ -725,6 +734,48 @@ class InterfaceDiscovery
         $this->emitAlert($settings, $deviceMeta, $ifaceMeta, $eventType, $severity, $logMessage, $telegramText);
     }
 
+    /**
+     * Whether alerting is currently muted for this device — either a global
+     * mute (device_id = 0) or a per-device mute, optionally auto-expiring.
+     */
+    private function isMuted(int $deviceId): bool
+    {
+        if (!Schema::hasTable('alert_mutes')) {
+            return false;
+        }
+
+        return DB::table('alert_mutes')
+            ->where(function ($q) use ($deviceId) {
+                $q->where('device_id', 0);
+                if ($deviceId > 0) {
+                    $q->orWhere('device_id', $deviceId);
+                }
+            })
+            ->where(function ($q) {
+                $q->whereNull('muted_until')->orWhere('muted_until', '>', now());
+            })
+            ->exists();
+    }
+
+    /**
+     * Cooldown key that collapses related events so a flapping link is rate
+     * limited as a whole: up/down share one "link" key, etc.
+     */
+    private function cooldownKey(string $eventType, int $deviceId, $ifIndex): string
+    {
+        $cat = match ($eventType) {
+            'interface_down', 'interface_up' => 'link',
+            'interface_warning' => 'warn',
+            'interface_degradation', 'interface_recovered' => 'degr',
+            'device_down', 'device_up' => 'dev',
+            default => $eventType,
+        };
+
+        return $ifIndex !== null
+            ? "cd:{$cat}:{$deviceId}:{$ifIndex}"
+            : "cd:{$cat}:{$deviceId}";
+    }
+
     private function emitAlert(
         array $settings,
         array $deviceMeta,
@@ -734,6 +785,28 @@ class InterfaceDiscovery
         string $logMessage,
         string $telegramText = ''
     ): void {
+        $deviceId = (int) ($deviceMeta['device_id'] ?? 0);
+
+        // Maintenance: drop the alert entirely if this device (or all) is muted.
+        if ($this->isMuted($deviceId)) {
+            return;
+        }
+
+        // Flap/rate cooldown: suppress repeated alerts of the same collapsed
+        // category for this device/interface within the configured window.
+        $cooldownSec = (int) ($settings['rate_limit_min'] ?? 5) * 60;
+        if ($cooldownSec > 0 && Schema::hasTable('alert_cooldowns')) {
+            $key = $this->cooldownKey($eventType, $deviceId, $ifaceMeta['if_index'] ?? null);
+            $last = DB::table('alert_cooldowns')->where('k', $key)->value('last_sent_at');
+            if ($last !== null && (time() - strtotime((string) $last)) < $cooldownSec) {
+                return;
+            }
+            DB::table('alert_cooldowns')->updateOrInsert(
+                ['k' => $key],
+                ['last_sent_at' => date('Y-m-d H:i:s')]
+            );
+        }
+
         // Web UI log
         if (($settings['webui_enabled'] ?? true) === true) {
             try {
