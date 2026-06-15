@@ -559,6 +559,7 @@ class InterfaceDiscovery
             'interface_down' => true,
             'interface_up' => true,
             'interface_warning' => true,
+            'interface_degradation' => true,
             'device_down' => true,
             'device_up' => true,
 
@@ -577,6 +578,7 @@ class InterfaceDiscovery
             'alert_interface_down',
             'alert_interface_up',
             'alert_interface_warning',
+            'alert_interface_degradation',
             'alert_device_down',
             'alert_device_up',
             'alert_rx_warning_high',
@@ -623,6 +625,10 @@ class InterfaceDiscovery
                 $settings['interface_warning'] = trim((string) $val) !== '0';
                 continue;
             }
+            if ($name === 'alert_interface_degradation') {
+                $settings['interface_degradation'] = trim((string) $val) !== '0';
+                continue;
+            }
             if ($name === 'alert_device_down') {
                 $settings['device_down'] = trim((string) $val) !== '0';
                 continue;
@@ -647,6 +653,28 @@ class InterfaceDiscovery
         }
 
         return $settings;
+    }
+
+    /**
+     * Public entry point for the daily optical degradation check to emit an
+     * alert through the same channels (web log + mobile push + Telegram),
+     * honoring the alert_interface_degradation toggle.
+     *
+     * @param  string  $eventType  'interface_degradation' or 'interface_recovered'
+     */
+    public function emitDegradationAlert(
+        array $deviceMeta,
+        array $ifaceMeta,
+        string $eventType,
+        string $severity,
+        string $logMessage,
+        string $telegramText = ''
+    ): void {
+        $settings = $this->loadAlertSettings();
+        if (($settings['interface_degradation'] ?? true) !== true) {
+            return;
+        }
+        $this->emitAlert($settings, $deviceMeta, $ifaceMeta, $eventType, $severity, $logMessage, $telegramText);
     }
 
     private function emitAlert(

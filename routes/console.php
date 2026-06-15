@@ -17,3 +17,7 @@ Schedule::command('stats:rollup')->hourlyAt(5)->withoutOverlapping();
 
 // Enforce tiered retention: raw kept 30d, hourly 18mo (daily kept long-term).
 Schedule::command('stats:prune')->dailyAt('03:30')->withoutOverlapping();
+
+// Detect slow optical (redaman) degradation vs a ~1-week baseline and alert
+// before the link actually goes down. Runs after the daily rollup is settled.
+Schedule::command('optical:degradation')->dailyAt('06:00')->withoutOverlapping();
