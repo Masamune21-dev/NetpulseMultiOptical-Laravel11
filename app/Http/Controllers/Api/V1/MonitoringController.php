@@ -83,32 +83,34 @@ class MonitoringController extends Controller
             return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
         }
 
-        [$interval, $bucketExpr] = match ($range) {
-            '1h'  => ['1 HOUR', null],
-            '1d'  => ['24 HOUR', null],
-            '3d'  => ['72 HOUR', null],
-            '7d'  => ['7 DAY', null],
-            '30d' => ['30 DAY', "DATE_FORMAT(DATE_SUB(created_at, INTERVAL MOD(MINUTE(created_at), 15) MINUTE), '%Y-%m-%d %H:%i:00')"],
-            '1y'  => ['1 YEAR', "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')"],
-            default => ['1 HOUR', null],
+        // Short ranges read raw per-minute samples (kept ~30 days); longer
+        // ranges read rollup tables so redaman history survives after prune.
+        [$interval, $source] = match ($range) {
+            '1h'  => ['1 HOUR', 'raw'],
+            '1d'  => ['24 HOUR', 'raw'],
+            '3d'  => ['72 HOUR', 'raw'],
+            '7d'  => ['7 DAY', 'raw'],
+            '30d' => ['30 DAY', 'hourly'],
+            '3mo' => ['3 MONTH', 'hourly'],
+            '6mo' => ['6 MONTH', 'daily'],
+            '1y'  => ['1 YEAR', 'daily'],
+            default => ['1 HOUR', 'raw'],
         };
 
-        if ($bucketExpr === null) {
+        if ($source === 'raw') {
             $sql = "SELECT created_at, tx_power, rx_power, loss
                     FROM interface_stats
                     WHERE device_id = ? AND if_index = ?
                       AND created_at >= NOW() - INTERVAL $interval
                     ORDER BY created_at ASC";
         } else {
-            $sql = "SELECT $bucketExpr AS created_at,
-                           AVG(tx_power) AS tx_power,
-                           AVG(rx_power) AS rx_power,
-                           AVG(loss)     AS loss
-                    FROM interface_stats
+            $table = $source === 'daily' ? 'interface_stats_daily' : 'interface_stats_hourly';
+            $sql = "SELECT bucket AS created_at,
+                           tx_avg AS tx_power, rx_avg AS rx_power, loss_avg AS loss
+                    FROM $table
                     WHERE device_id = ? AND if_index = ?
-                      AND created_at >= NOW() - INTERVAL $interval
-                    GROUP BY $bucketExpr
-                    ORDER BY created_at ASC";
+                      AND bucket >= NOW() - INTERVAL $interval
+                    ORDER BY bucket ASC";
         }
 
         $rows = DB::select($sql, [$deviceId, $ifIndex]);
