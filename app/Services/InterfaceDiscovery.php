@@ -196,6 +196,10 @@ class InterfaceDiscovery
         }
         $nowTs = time();
 
+        // Per-interface RX threshold overrides (CLI alerting only). Empty when
+        // the table/feature is absent.
+        $thresholdOverrides = $isCli ? $this->loadThresholdOverrides($deviceId) : [];
+
         $inserted = 0;
         $sfpCount = 0;
         $downSfpCount = 0;
@@ -336,6 +340,21 @@ class InterfaceDiscovery
                 $warnLow = is_numeric($alertSettings['rx_warn_low'] ?? null)
                     ? (float) $alertSettings['rx_warn_low']
                     : -25.0;
+
+                // Per-interface overrides take precedence over the globals.
+                $ovr = $thresholdOverrides[$ifIdx] ?? null;
+                if ($ovr) {
+                    if ($ovr['rx_down_threshold'] !== null) {
+                        $downThreshold = (float) $ovr['rx_down_threshold'];
+                    }
+                    if ($ovr['rx_warn_high'] !== null) {
+                        $warnHigh = (float) $ovr['rx_warn_high'];
+                    }
+                    if ($ovr['rx_warn_low'] !== null) {
+                        $warnLow = (float) $ovr['rx_warn_low'];
+                    }
+                }
+
                 if ($warnLow > $warnHigh) {
                     [$warnLow, $warnHigh] = [$warnHigh, $warnLow];
                 }
@@ -542,6 +561,35 @@ class InterfaceDiscovery
             'chat_id' => $s['chat_id'] ?? '',
             'rx_threshold' => (float) ($s['rx_warn_low'] ?? -25.0),
         ];
+    }
+
+    /**
+     * Load per-interface RX threshold overrides for a device, keyed by
+     * ifIndex. Each entry has rx_warn_high / rx_warn_low / rx_down_threshold,
+     * any of which may be null (meaning "use the global value"). Returns an
+     * empty array if the feature table does not exist yet.
+     *
+     * @return array<int,array{rx_warn_high:?float,rx_warn_low:?float,rx_down_threshold:?float}>
+     */
+    private function loadThresholdOverrides(int $deviceId): array
+    {
+        if (!Schema::hasTable('interface_thresholds')) {
+            return [];
+        }
+
+        $map = [];
+        $rows = DB::table('interface_thresholds')
+            ->where('device_id', $deviceId)
+            ->get(['if_index', 'rx_warn_high', 'rx_warn_low', 'rx_down_threshold']);
+        foreach ($rows as $row) {
+            $map[(int) $row->if_index] = [
+                'rx_warn_high' => $row->rx_warn_high !== null ? (float) $row->rx_warn_high : null,
+                'rx_warn_low' => $row->rx_warn_low !== null ? (float) $row->rx_warn_low : null,
+                'rx_down_threshold' => $row->rx_down_threshold !== null ? (float) $row->rx_down_threshold : null,
+            ];
+        }
+
+        return $map;
     }
 
     private function loadAlertSettings(): array

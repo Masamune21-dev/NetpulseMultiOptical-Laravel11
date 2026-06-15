@@ -8,6 +8,7 @@ use App\Http\Controllers\DiscoverInterfacesController;
 use App\Http\Controllers\InterfacesApiController;
 use App\Http\Controllers\InterfacesController;
 use App\Http\Controllers\InterfacesListApiController;
+use App\Http\Controllers\InterfaceThresholdsController;
 use App\Http\Controllers\MapApiController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\MonitoringApiController;
@@ -61,6 +62,14 @@ Route::middleware(['legacy.auth'])->group(function () {
     Route::get('/api/interfaces', [InterfacesApiController::class, 'index']);
     Route::get('/api/interfaces/all', [InterfacesListApiController::class, 'index']);
     Route::get('/api/interfaces/traffic_history', [InterfacesListApiController::class, 'trafficHistory']);
+
+    // Per-interface RX threshold overrides (admin-managed).
+    Route::get('/api/interfaces/thresholds', [InterfaceThresholdsController::class, 'show'])
+        ->middleware('legacy.role:admin,technician,viewer');
+    Route::post('/api/interfaces/thresholds', [InterfaceThresholdsController::class, 'save'])
+        ->middleware('legacy.role:admin');
+    Route::delete('/api/interfaces/thresholds', [InterfaceThresholdsController::class, 'clear'])
+        ->middleware('legacy.role:admin');
 
     Route::get('/api/monitoring_devices', [MonitoringApiController::class, 'devices']);
     Route::get('/api/monitoring_interfaces', [MonitoringApiController::class, 'interfaces']);
