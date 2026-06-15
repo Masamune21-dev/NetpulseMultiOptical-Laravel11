@@ -39,8 +39,10 @@ class InterfaceDiscovery
         }
 
         $alertSettings = $this->loadAlertSettings();
-        $alertStateFile = storage_path('app/alert_state.json');
-        $alertState = $isCli ? $this->loadAlertState($alertStateFile) : [];
+        // Per-device alert state file so parallel per-device polling can't race
+        // on a shared file (each worker only touches its own device's state).
+        $alertStateFile = storage_path('app/alert_state/' . $deviceId . '.json');
+        $alertState = $isCli ? $this->loadAlertState($alertStateFile, $deviceId) : [];
         $alertStateDirty = false;
 
         $ifIndex = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.1');
@@ -1122,10 +1124,12 @@ class InterfaceDiscovery
         return round($dbm, 3);
     }
 
-    private function loadAlertState(string $path): array
+    private function loadAlertState(string $path, ?int $deviceId = null): array
     {
         if (!is_file($path)) {
-            return [];
+            // One-time fallback: extract this device's keys from the legacy
+            // monolithic alert_state.json until the per-device file is written.
+            return $deviceId !== null ? $this->legacyDeviceState($deviceId) : [];
         }
         $fp = fopen($path, 'r');
         if (!$fp) {
@@ -1139,8 +1143,38 @@ class InterfaceDiscovery
         return is_array($data) ? $data : [];
     }
 
+    /**
+     * Pull a single device's keys ("dev:{id}" and "{id}:{ifIndex}") out of the
+     * pre-split monolithic alert_state.json, so the switch to per-device state
+     * files doesn't drop transition baselines on first run.
+     */
+    private function legacyDeviceState(int $deviceId): array
+    {
+        $legacy = storage_path('app/alert_state.json');
+        if (!is_file($legacy)) {
+            return [];
+        }
+        $data = json_decode((string) @file_get_contents($legacy), true);
+        if (!is_array($data)) {
+            return [];
+        }
+        $prefix = $deviceId . ':';
+        $devKey = 'dev:' . $deviceId;
+        $out = [];
+        foreach ($data as $k => $v) {
+            if ($k === $devKey || str_starts_with((string) $k, $prefix)) {
+                $out[$k] = $v;
+            }
+        }
+        return $out;
+    }
+
     private function saveAlertState(string $path, array $state): void
     {
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
         $fp = fopen($path, 'c+');
         if (!$fp) {
             return;
