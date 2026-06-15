@@ -138,7 +138,7 @@ class InterfacesController extends Controller
         $deviceId = (int) $request->query('device_id', 0);
         $ifIndex = (int) $request->query('if_index', 0);
         $range = strtolower(trim((string) $request->query('range', '1d')));
-        if (!in_array($range, ['1d', '7d', '30d'], true)) {
+        if (!in_array($range, ['1d', '7d', '30d', '3mo', '6mo', '1y'], true)) {
             $range = '1d';
         }
 
@@ -146,10 +146,15 @@ class InterfacesController extends Controller
             return response()->json(['success' => false, 'error' => 'Missing device_id or if_index'], 400);
         }
 
-        $intervalSql = match ($range) {
-            '7d' => 'INTERVAL 7 DAY',
-            '30d' => 'INTERVAL 30 DAY',
-            default => 'INTERVAL 1 DAY',
+        // Short ranges read raw per-minute rows (kept ~30 days); longer ranges
+        // read rollup tables so history survives after raw is pruned.
+        [$intervalSql, $source] = match ($range) {
+            '7d'  => ['INTERVAL 7 DAY', 'raw'],
+            '30d' => ['INTERVAL 30 DAY', 'hourly'],
+            '3mo' => ['INTERVAL 3 MONTH', 'hourly'],
+            '6mo' => ['INTERVAL 6 MONTH', 'daily'],
+            '1y'  => ['INTERVAL 1 YEAR', 'daily'],
+            default => ['INTERVAL 1 DAY', 'raw'],
         };
 
         $iface = DB::table('interfaces')
@@ -188,11 +193,23 @@ class InterfacesController extends Controller
             ]);
         }
 
-        $sql = "SELECT created_at, in_rate_bps, out_rate_bps
-                FROM interface_traffic_stats
-                WHERE device_id = ? AND if_index = ?
-                  AND created_at >= NOW() - $intervalSql
-                ORDER BY created_at ASC";
+        if ($source === 'raw') {
+            $sql = "SELECT created_at, in_rate_bps, out_rate_bps,
+                           NULL AS in_rate_max, NULL AS out_rate_max
+                    FROM interface_traffic_stats
+                    WHERE device_id = ? AND if_index = ?
+                      AND created_at >= NOW() - $intervalSql
+                    ORDER BY created_at ASC";
+        } else {
+            $table = $source === 'daily' ? 'interface_traffic_daily' : 'interface_traffic_hourly';
+            $sql = "SELECT bucket AS created_at,
+                           in_rate_avg AS in_rate_bps, out_rate_avg AS out_rate_bps,
+                           in_rate_max, out_rate_max
+                    FROM $table
+                    WHERE device_id = ? AND if_index = ?
+                      AND bucket >= NOW() - $intervalSql
+                    ORDER BY bucket ASC";
+        }
 
         $rows = DB::select($sql, [$deviceId, $ifIndex]);
 
@@ -206,6 +223,10 @@ class InterfacesController extends Controller
             $inV = $row->in_rate_bps !== null ? (int) $row->in_rate_bps : null;
             $outV = $row->out_rate_bps !== null ? (int) $row->out_rate_bps : null;
 
+            // For rollup sources the true peak is the bucket's stored max.
+            $inPeak = (isset($row->in_rate_max) && $row->in_rate_max !== null) ? (int) $row->in_rate_max : $inV;
+            $outPeak = (isset($row->out_rate_max) && $row->out_rate_max !== null) ? (int) $row->out_rate_max : $outV;
+
             $data[] = [
                 'created_at' => (string) $row->created_at,
                 'in_rate_bps' => $inV,
@@ -214,12 +235,12 @@ class InterfacesController extends Controller
 
             if ($inV !== null) {
                 $inSum += $inV; $inCount++;
-                if ($inMax === null || $inV > $inMax) $inMax = $inV;
+                if ($inPeak !== null && ($inMax === null || $inPeak > $inMax)) $inMax = $inPeak;
                 $inCur = $inV;
             }
             if ($outV !== null) {
                 $outSum += $outV; $outCount++;
-                if ($outMax === null || $outV > $outMax) $outMax = $outV;
+                if ($outPeak !== null && ($outMax === null || $outPeak > $outMax)) $outMax = $outPeak;
                 $outCur = $outV;
             }
         }

@@ -46,14 +46,28 @@ class RollupStats extends Command
         // Daily is derived from hourly; widen to cover whole affected days.
         $daily = $this->rollupDaily((clone $from)->startOfDay(), $to);
 
-        $this->info("Rollup done: {$hourly} hourly bucket(s), {$daily} daily bucket(s) [{$from} → {$to}]");
+        $tHourly = $this->rollupTrafficHourly($from, $to);
+        $tDaily = $this->rollupTrafficDaily((clone $from)->startOfDay(), $to);
+
+        $this->info("Rollup done: optical {$hourly}h/{$daily}d, traffic {$tHourly}h/{$tDaily}d [{$from} → {$to}]");
 
         return self::SUCCESS;
     }
 
     private function backfill(): int
     {
-        $span = DB::selectOne('SELECT MIN(created_at) mn, MAX(created_at) mx FROM interface_stats');
+        // Span the union of both raw tables so optical and traffic history are
+        // both fully covered regardless of which started first.
+        $span = DB::selectOne('
+            SELECT LEAST(
+                     COALESCE((SELECT MIN(created_at) FROM interface_stats), NOW()),
+                     COALESCE((SELECT MIN(created_at) FROM interface_traffic_stats), NOW())
+                   ) mn,
+                   GREATEST(
+                     COALESCE((SELECT MAX(created_at) FROM interface_stats), NOW()),
+                     COALESCE((SELECT MAX(created_at) FROM interface_traffic_stats), NOW())
+                   ) mx
+        ');
         if (!$span || !$span->mn) {
             $this->info('No raw data to backfill.');
             return self::SUCCESS;
@@ -65,18 +79,22 @@ class RollupStats extends Command
 
         $cursor = clone $start;
         $totalHourly = 0;
+        $totalTrafficHourly = 0;
         while ($cursor < $end) {
             $dayEnd = (clone $cursor)->addDay();
             $n = $this->rollupHourly($cursor, $dayEnd);
+            $tn = $this->rollupTrafficHourly($cursor, $dayEnd);
             $totalHourly += $n;
-            $this->line("  {$cursor->toDateString()}: {$n} hourly buckets");
+            $totalTrafficHourly += $tn;
+            $this->line("  {$cursor->toDateString()}: optical {$n}, traffic {$tn} hourly buckets");
             $cursor = $dayEnd;
         }
 
         $this->info('Building daily aggregates from hourly...');
         $totalDaily = $this->rollupDaily($start, $end);
+        $totalTrafficDaily = $this->rollupTrafficDaily($start, $end);
 
-        $this->info("Backfill done: {$totalHourly} hourly, {$totalDaily} daily buckets.");
+        $this->info("Backfill done: optical {$totalHourly}h/{$totalDaily}d, traffic {$totalTrafficHourly}h/{$totalTrafficDaily}d.");
         return self::SUCCESS;
     }
 
@@ -148,6 +166,75 @@ class RollupStats extends Command
                 rx_min=VALUES(rx_min), rx_avg=VALUES(rx_avg), rx_max=VALUES(rx_max),
                 tx_min=VALUES(tx_min), tx_avg=VALUES(tx_avg), tx_max=VALUES(tx_max),
                 loss_min=VALUES(loss_min), loss_avg=VALUES(loss_avg), loss_max=VALUES(loss_max),
+                samples=VALUES(samples)
+        ";
+
+        return DB::affectingStatement($sql, [
+            $from->format('Y-m-d H:i:s'),
+            $to->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
+     * Aggregate raw interface_traffic_stats (in/out bps rates) into
+     * interface_traffic_hourly for [from, to). Returns buckets written.
+     */
+    private function rollupTrafficHourly(Carbon $from, Carbon $to): int
+    {
+        $sql = "
+            INSERT INTO interface_traffic_hourly
+                (device_id, if_index, bucket,
+                 in_rate_min, in_rate_avg, in_rate_max,
+                 out_rate_min, out_rate_avg, out_rate_max, samples)
+            SELECT device_id, if_index,
+                   DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00') AS bucket,
+                   MIN(in_rate_bps), AVG(in_rate_bps), MAX(in_rate_bps),
+                   MIN(out_rate_bps), AVG(out_rate_bps), MAX(out_rate_bps),
+                   COUNT(*)
+            FROM interface_traffic_stats
+            WHERE created_at >= ? AND created_at < ?
+            GROUP BY device_id, if_index, bucket
+            ON DUPLICATE KEY UPDATE
+                in_rate_min=VALUES(in_rate_min), in_rate_avg=VALUES(in_rate_avg), in_rate_max=VALUES(in_rate_max),
+                out_rate_min=VALUES(out_rate_min), out_rate_avg=VALUES(out_rate_avg), out_rate_max=VALUES(out_rate_max),
+                samples=VALUES(samples)
+        ";
+
+        return DB::affectingStatement($sql, [
+            $from->format('Y-m-d H:i:s'),
+            $to->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
+     * Aggregate interface_traffic_hourly into interface_traffic_daily for
+     * [from, to). Averages are sample-weighted; min/max carried through so
+     * peaks survive. Returns buckets written.
+     */
+    private function rollupTrafficDaily(Carbon $from, Carbon $to): int
+    {
+        $sql = "
+            INSERT INTO interface_traffic_daily
+                (device_id, if_index, bucket,
+                 in_rate_min, in_rate_avg, in_rate_max,
+                 out_rate_min, out_rate_avg, out_rate_max, samples)
+            SELECT device_id, if_index,
+                   DATE(bucket) AS day,
+                   MIN(in_rate_min),
+                   SUM(CASE WHEN in_rate_avg IS NOT NULL THEN in_rate_avg * samples ELSE 0 END)
+                     / NULLIF(SUM(CASE WHEN in_rate_avg IS NOT NULL THEN samples ELSE 0 END), 0),
+                   MAX(in_rate_max),
+                   MIN(out_rate_min),
+                   SUM(CASE WHEN out_rate_avg IS NOT NULL THEN out_rate_avg * samples ELSE 0 END)
+                     / NULLIF(SUM(CASE WHEN out_rate_avg IS NOT NULL THEN samples ELSE 0 END), 0),
+                   MAX(out_rate_max),
+                   SUM(samples)
+            FROM interface_traffic_hourly
+            WHERE bucket >= ? AND bucket < ?
+            GROUP BY device_id, if_index, day
+            ON DUPLICATE KEY UPDATE
+                in_rate_min=VALUES(in_rate_min), in_rate_avg=VALUES(in_rate_avg), in_rate_max=VALUES(in_rate_max),
+                out_rate_min=VALUES(out_rate_min), out_rate_avg=VALUES(out_rate_avg), out_rate_max=VALUES(out_rate_max),
                 samples=VALUES(samples)
         ";
 

@@ -38,31 +38,41 @@ class PruneStats extends Command
         $rawCutoff = Carbon::now()->subDays($days);
         $hourlyCutoff = Carbon::now()->subMonths($hourlyMonths);
 
-        // --- Safety: ensure hourly rollup covers the raw we want to delete ---
-        $oldRaw = DB::table('interface_stats')->where('created_at', '<', $rawCutoff)->exists();
-        if ($oldRaw) {
-            $hourlyOldest = DB::table('interface_stats_hourly')->min('bucket');
-            $rawOldest = DB::table('interface_stats')->min('created_at');
-            if ($hourlyOldest === null || Carbon::parse($hourlyOldest)->gt(Carbon::parse($rawOldest)->addDay())) {
-                $this->error('Refusing to prune: hourly rollup does not cover the oldest raw data. Run `php artisan stats:rollup --backfill` first.');
-                return self::FAILURE;
+        // Each tier: [label, raw table, hourly rollup table]. Daily rollups are
+        // kept long-term and not pruned here.
+        $tiers = [
+            ['optical', 'interface_stats', 'interface_stats_hourly'],
+            ['traffic', 'interface_traffic_stats', 'interface_traffic_hourly'],
+        ];
+
+        foreach ($tiers as [$label, $rawTable, $hourlyTable]) {
+            // Safety: only prune raw once its hourly rollup covers the oldest
+            // raw data — otherwise backfill hasn't run and we'd lose history.
+            $oldRaw = DB::table($rawTable)->where('created_at', '<', $rawCutoff)->exists();
+            if ($oldRaw) {
+                $hourlyOldest = DB::table($hourlyTable)->min('bucket');
+                $rawOldest = DB::table($rawTable)->min('created_at');
+                if ($hourlyOldest === null || Carbon::parse($hourlyOldest)->gt(Carbon::parse($rawOldest)->addDay())) {
+                    $this->error("[{$label}] refusing to prune: hourly rollup does not cover the oldest raw data. Run `php artisan stats:rollup --backfill` first.");
+                    continue;
+                }
             }
-        }
 
-        // --- Raw interface_stats ---
-        $rawToDelete = DB::table('interface_stats')->where('created_at', '<', $rawCutoff)->count();
-        $this->info("Raw interface_stats older than {$rawCutoff} ({$days}d): {$rawToDelete} rows");
-        if (!$dry && $rawToDelete > 0) {
-            $deleted = $this->batchDelete('interface_stats', 'created_at', $rawCutoff, $batch);
-            $this->info("  deleted {$deleted} raw rows");
-        }
+            // Raw per-minute table.
+            $rawToDelete = DB::table($rawTable)->where('created_at', '<', $rawCutoff)->count();
+            $this->info("[{$label}] raw {$rawTable} older than {$rawCutoff} ({$days}d): {$rawToDelete} rows");
+            if (!$dry && $rawToDelete > 0) {
+                $deleted = $this->batchDelete($rawTable, 'created_at', $rawCutoff, $batch);
+                $this->info("  deleted {$deleted} raw rows");
+            }
 
-        // --- Hourly rollup ---
-        $hourlyToDelete = DB::table('interface_stats_hourly')->where('bucket', '<', $hourlyCutoff)->count();
-        $this->info("Hourly rollup older than {$hourlyCutoff} ({$hourlyMonths}mo): {$hourlyToDelete} rows");
-        if (!$dry && $hourlyToDelete > 0) {
-            $deleted = $this->batchDelete('interface_stats_hourly', 'bucket', $hourlyCutoff, $batch);
-            $this->info("  deleted {$deleted} hourly rows");
+            // Hourly rollup table.
+            $hourlyToDelete = DB::table($hourlyTable)->where('bucket', '<', $hourlyCutoff)->count();
+            $this->info("[{$label}] hourly {$hourlyTable} older than {$hourlyCutoff} ({$hourlyMonths}mo): {$hourlyToDelete} rows");
+            if (!$dry && $hourlyToDelete > 0) {
+                $deleted = $this->batchDelete($hourlyTable, 'bucket', $hourlyCutoff, $batch);
+                $this->info("  deleted {$deleted} hourly rows");
+            }
         }
 
         if ($dry) {
