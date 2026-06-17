@@ -821,16 +821,16 @@ class InterfaceDiscovery
     }
 
     /**
-     * Cooldown key that collapses related events so a flapping link is rate
-     * limited as a whole: up/down share one "link" key, etc.
+     * Cooldown key for the rate-limited (non-transition) alert types only.
+     * Down/up transitions bypass the cooldown entirely in emitAlert(), so the
+     * only callers here are RX warnings (which can oscillate between
+     * warning/critical) and the daily degradation check.
      */
     private function cooldownKey(string $eventType, int $deviceId, $ifIndex): string
     {
         $cat = match ($eventType) {
-            'interface_down', 'interface_up' => 'link',
             'interface_warning' => 'warn',
             'interface_degradation', 'interface_recovered' => 'degr',
-            'device_down', 'device_up' => 'dev',
             default => $eventType,
         };
 
@@ -855,9 +855,18 @@ class InterfaceDiscovery
             return;
         }
 
-        // Flap/rate cooldown: suppress repeated alerts of the same collapsed
-        // category for this device/interface within the configured window.
-        $cooldownSec = (int) ($settings['rate_limit_min'] ?? 5) * 60;
+        // Flap/rate cooldown — only for alerts that can repeat without an
+        // intervening opposite event (RX warnings oscillating between
+        // warning/critical, daily degradation). Down/up are edge-triggered and
+        // strictly alternating: a "down" can't fire again before an "up", so
+        // every one is a real, non-duplicate event and must always be delivered
+        // — rate-limiting them only ever drops a genuine recovery.
+        $skipCooldown = in_array(
+            $eventType,
+            ['interface_down', 'interface_up', 'device_down', 'device_up'],
+            true
+        );
+        $cooldownSec = $skipCooldown ? 0 : (int) ($settings['rate_limit_min'] ?? 5) * 60;
         if ($cooldownSec > 0 && Schema::hasTable('alert_cooldowns')) {
             $key = $this->cooldownKey($eventType, $deviceId, $ifaceMeta['if_index'] ?? null);
             $last = DB::table('alert_cooldowns')->where('k', $key)->value('last_sent_at');
