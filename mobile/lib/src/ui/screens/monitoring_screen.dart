@@ -484,22 +484,51 @@ class _MetricChip extends StatelessWidget {
   final double? value;
   final String unit;
 
+  Color? get _dotColor {
+    if (value == null) return null;
+    if (label == 'RX') {
+      if (value! <= -35) return const Color(0xFFDC2626);
+      if (value! < -26) return const Color(0xFFEA580C);
+      if (value! < -22) return const Color(0xFFFBBF24);
+      return const Color(0xFF4ADE80);
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final dot = _dotColor;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(
-        value != null
-            ? '$label ${value!.toStringAsFixed(2)} $unit'
-            : '$label -',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (dot != null) ...[
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: dot,
+              ),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            value != null
+                ? '$label ${value!.toStringAsFixed(2)} $unit'
+                : '$label -',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
