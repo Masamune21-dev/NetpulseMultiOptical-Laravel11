@@ -45,7 +45,7 @@ class SessionStore {
 
   String? accessToken;
   SessionUser? user;
-  String apiBaseUrl = 'https://netpulse.bmkv.net';
+  String apiBaseUrl = 'https://netpulse.kusumavision.net';
 
   Future<void> load() async {
     _prefs = await SharedPreferences.getInstance();
