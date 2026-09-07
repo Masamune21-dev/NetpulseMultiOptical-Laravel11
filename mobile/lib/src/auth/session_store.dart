@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SessionUser {
@@ -40,18 +41,29 @@ class SessionStore {
   static const _kApiBaseUrl = 'api_base_url';
   static const _kAccessToken = 'access_token';
   static const _kUserJson = 'user_json';
+  static const _kThemeMode = 'theme_mode';
 
   SharedPreferences? _prefs;
 
   String? accessToken;
   SessionUser? user;
   String apiBaseUrl = 'https://netpulse.kusumavision.net';
+  final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 
   Future<void> load() async {
     _prefs = await SharedPreferences.getInstance();
 
     apiBaseUrl = _prefs!.getString(_kApiBaseUrl) ?? apiBaseUrl;
     accessToken = _prefs!.getString(_kAccessToken);
+
+    final savedTheme = _prefs!.getString(_kThemeMode);
+    if (savedTheme == 'dark') {
+      themeModeNotifier.value = ThemeMode.dark;
+    } else if (savedTheme == 'light') {
+      themeModeNotifier.value = ThemeMode.light;
+    } else {
+      themeModeNotifier.value = ThemeMode.system;
+    }
 
     final raw = _prefs!.getString(_kUserJson);
     if (raw != null && raw.isNotEmpty) {
@@ -65,6 +77,12 @@ class SessionStore {
   Future<void> setApiBaseUrl(String value) async {
     apiBaseUrl = value.trim();
     await _prefs?.setString(_kApiBaseUrl, apiBaseUrl);
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    themeModeNotifier.value = mode;
+    final val = mode == ThemeMode.dark ? 'dark' : (mode == ThemeMode.light ? 'light' : 'system');
+    await _prefs?.setString(_kThemeMode, val);
   }
 
   Future<void> setSession({

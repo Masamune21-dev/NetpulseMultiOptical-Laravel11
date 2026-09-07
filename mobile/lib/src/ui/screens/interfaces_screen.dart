@@ -411,6 +411,13 @@ class _InterfaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final textPrimary = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1E293B);
+    final textMuted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
     final statusColor = row.isUp
         ? const Color(0xFF16A34A)
         : const Color(0xFFDC2626);
@@ -423,12 +430,12 @@ class _InterfaceCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardBg,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: cardBorder),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -446,18 +453,18 @@ class _InterfaceCard extends StatelessWidget {
                     children: [
                       Text(
                         row.ifName ?? 'if${row.ifIndex}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
-                          color: Color(0xFF1E293B),
+                          color: textPrimary,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
                         row.deviceName ?? 'Device ${row.deviceId}',
-                        style: const TextStyle(
-                          color: Color(0xFF64748B),
+                        style: TextStyle(
+                          color: textMuted,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
@@ -488,10 +495,10 @@ class _InterfaceCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Icon(
+                Icon(
                   Icons.chevron_right,
                   size: 18,
-                  color: Color(0xFF94A3B8),
+                  color: textMuted,
                 ),
               ],
             ),
@@ -500,8 +507,8 @@ class _InterfaceCard extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 desc,
-                style: const TextStyle(
-                  color: Color(0xFF475569),
+                style: TextStyle(
+                  color: textMuted,
                   fontSize: 11.5,
                   fontStyle: FontStyle.italic,
                 ),
@@ -516,25 +523,30 @@ class _InterfaceCard extends StatelessWidget {
             Row(
               children: [
                 _metricBox(
+                  context: context,
                   label: 'RX',
                   value: row.rxPower != null
                       ? '${row.rxPower!.toStringAsFixed(2)} dBm'
                       : '—',
                   color: _rxColor(row.rxPower),
+                  rxVal: row.rxPower,
                 ),
                 const SizedBox(width: 6),
                 _metricBox(
+                  context: context,
                   label: 'TX',
                   value: row.txPower != null
                       ? '${row.txPower!.toStringAsFixed(2)} dBm'
                       : '—',
                   color: _rxColor(row.txPower),
+                  rxVal: row.txPower,
                 ),
                 const SizedBox(width: 6),
                 _metricBox(
+                  context: context,
                   label: 'Speed',
                   value: _formatBps(row.ifSpeed, decimals: 0),
-                  color: const Color(0xFF334155),
+                  color: textPrimary,
                 ),
               ],
             ),
@@ -570,29 +582,55 @@ class _InterfaceCard extends StatelessWidget {
   }
 
   Widget _metricBox({
+    required BuildContext context,
     required String label,
     required String value,
     required Color color,
+    double? rxVal,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final boxBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+    final boxBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    double? signalPct;
+    if (rxVal != null) {
+      final clamped = rxVal.clamp(-40.0, -5.0);
+      signalPct = ((clamped - (-40.0)) / 35.0).clamp(0.05, 1.0);
+    }
+
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
+          color: boxBg,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: boxBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF94A3B8),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  ),
+                ),
+                if (signalPct != null)
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: color,
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 2),
             Text(
@@ -605,6 +643,18 @@ class _InterfaceCard extends StatelessWidget {
               ),
               overflow: TextOverflow.ellipsis,
             ),
+            if (signalPct != null) ...[
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: signalPct,
+                  minHeight: 2.5,
+                  backgroundColor: isDark ? Colors.white12 : Colors.black12,
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
+              ),
+            ],
           ],
         ),
       ),

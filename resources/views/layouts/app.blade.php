@@ -107,6 +107,12 @@
                             <i class="fas fa-sliders"></i><span>Settings</span>
                         </a>
                     </li>
+                    <li class="sidebar-download-item">
+                        <a href="/downloads/netpulse.apk" target="_blank" download class="sidebar-apk-link">
+                            <i class="fab fa-android text-success"></i><span>Download APK</span>
+                            <span class="badge-apk-tag">v2.0.2</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
 
@@ -135,6 +141,56 @@
                     <div class="topbar-actions-slot">
                         @stack('topbar-actions')
                     </div>
+                    
+                    {{-- App Switcher Ekosistem KusumaVision --}}
+                    <div class="ecosystem-dropdown" id="ecosystemDropdown">
+                        <button type="button" class="btn-ecosystem" onclick="toggleEcosystemMenu()" title="Ekosistem KusumaVision">
+                            <i class="fas fa-cubes"></i> <span>Ekosistem</span> <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="ecosystem-menu" id="ecosystemMenu">
+                            <div class="ecosystem-menu-header">KusumaVision Ecosystem</div>
+                            <a href="https://nms.kusumavision.net" target="_blank" rel="noopener" class="ecosystem-item">
+                                <i class="fas fa-network-wired text-cyan"></i>
+                                <div>
+                                    <div class="ecosystem-item-title">KusumaVision NMS</div>
+                                    <div class="ecosystem-item-sub">GPON OLT / ONU Management</div>
+                                </div>
+                            </a>
+                            <a href="https://mikrotik.kusumavision.net" target="_blank" rel="noopener" class="ecosystem-item">
+                                <i class="fas fa-server text-purple"></i>
+                                <div>
+                                    <div class="ecosystem-item-title">KusumaVision MikroTik</div>
+                                    <div class="ecosystem-item-sub">RouterOS, PPPoE & Firewall</div>
+                                </div>
+                            </a>
+                            <a href="https://billing.kusumavision.net" target="_blank" rel="noopener" class="ecosystem-item">
+                                <i class="fas fa-file-invoice-dollar text-emerald"></i>
+                                <div>
+                                    <div class="ecosystem-item-title">KusumaVision Billing</div>
+                                    <div class="ecosystem-item-sub">CRM, Kasir & Otomasi Isolir</div>
+                                </div>
+                            </a>
+                            <a href="https://sso.kusumavision.net" target="_blank" rel="noopener" class="ecosystem-item">
+                                <i class="fas fa-shield-halved text-amber"></i>
+                                <div>
+                                    <div class="ecosystem-item-title">KusumaVision SSO</div>
+                                    <div class="ecosystem-item-sub">Identity Provider & Akun Terpusat</div>
+                                </div>
+                            </a>
+                            <a href="https://kusumavision.net" target="_blank" rel="noopener" class="ecosystem-item">
+                                <i class="fas fa-globe text-primary"></i>
+                                <div>
+                                    <div class="ecosystem-item-title">Portal Perusahaan</div>
+                                    <div class="ecosystem-item-sub">kusumavision.net</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <a href="/downloads/netpulse.apk" class="topbar-apk-btn" title="Unduh Netpulse Mobile APK" download target="_blank">
+                        <i class="fab fa-android"></i> <span>APK v2.0.2</span>
+                    </a>
+
                     <div class="header-clock" data-live-clock></div>
                     <div class="user-info">
                         <i class="fas fa-user"></i>
@@ -199,6 +255,21 @@
     </footer>
 
     <script src="{{ asset('assets/js/script.js') }}?v={{ filemtime(public_path('assets/js/script.js')) }}"></script>
+    <script>
+        function toggleEcosystemMenu() {
+            var m = document.getElementById('ecosystemMenu');
+            if (m) {
+                m.classList.toggle('active');
+            }
+        }
+        document.addEventListener('click', function (e) {
+            var d = document.getElementById('ecosystemDropdown');
+            var m = document.getElementById('ecosystemMenu');
+            if (d && m && !d.contains(e.target)) {
+                m.classList.remove('active');
+            }
+        });
+    </script>
     @stack('scripts')
 </body>
 </html>

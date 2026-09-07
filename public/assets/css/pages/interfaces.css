@@ -156,6 +156,103 @@
     white-space: nowrap;
 }
 
+/* Optical Badge Neo-Brutalism */
+.if-opt-cell {
+    white-space: nowrap;
+}
+
+.opt-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.76rem;
+    font-weight: 800;
+    padding: 3px 7px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: 2px 2px 0 var(--ink);
+    line-height: 1.2;
+}
+
+.opt-badge small {
+    font-size: 0.6rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    padding: 1px 3px;
+    border-radius: 2px;
+    margin-left: 2px;
+}
+
+.opt-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.opt-badge-ok {
+    background: #dcfce7;
+    color: #14532d;
+}
+.opt-badge-ok .opt-dot { background: #16a34a; }
+.opt-badge-ok small { background: #bbf7d0; color: #14532d; }
+
+.opt-badge-warn {
+    background: #fef9c3;
+    color: #713f12;
+}
+.opt-badge-warn .opt-dot { background: #ca8a04; }
+.opt-badge-warn small { background: #fef08a; color: #713f12; }
+
+.opt-badge-critical {
+    background: #ffedd5;
+    color: #7c2d12;
+}
+.opt-badge-critical .opt-dot { background: #ea580c; }
+.opt-badge-critical small { background: #fed7aa; color: #7c2d12; }
+
+.opt-badge-down {
+    background: #fee2e2;
+    color: #7f1d1d;
+}
+.opt-badge-down .opt-dot { background: #dc2626; }
+.opt-badge-down small { background: #fecaca; color: #7f1d1d; }
+
+.opt-badge-na {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
+[data-theme="dark"] .opt-badge-ok {
+    background: #052e16;
+    color: #4ade80;
+}
+[data-theme="dark"] .opt-badge-ok small { background: #14532d; color: #86efac; }
+
+[data-theme="dark"] .opt-badge-warn {
+    background: #422006;
+    color: #fde047;
+}
+[data-theme="dark"] .opt-badge-warn small { background: #713f12; color: #fef08a; }
+
+[data-theme="dark"] .opt-badge-critical {
+    background: #431407;
+    color: #fb923c;
+}
+[data-theme="dark"] .opt-badge-critical small { background: #7c2d12; color: #fed7aa; }
+
+[data-theme="dark"] .opt-badge-down {
+    background: #450a0a;
+    color: #f87171;
+}
+[data-theme="dark"] .opt-badge-down small { background: #7f1d1d; color: #fca5a5; }
+
+[data-theme="dark"] .opt-badge-na {
+    background: #1f2937;
+    color: #9ca3af;
+}
+
 /* RX/TX color coding */
 .if-rx-ok { color: #16a34a; }
 .if-rx-warn { color: #ca8a04; }

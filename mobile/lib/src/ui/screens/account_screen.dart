@@ -197,6 +197,101 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
           ),
           Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tampilan & Tema',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  ValueListenableBuilder<ThemeMode>(
+                    valueListenable: SessionStore.instance.themeModeNotifier,
+                    builder: (context, mode, _) {
+                      return SegmentedButton<ThemeMode>(
+                        segments: const [
+                          ButtonSegment<ThemeMode>(
+                            value: ThemeMode.system,
+                            icon: Icon(Icons.brightness_auto_outlined),
+                            label: Text('Sistem'),
+                          ),
+                          ButtonSegment<ThemeMode>(
+                            value: ThemeMode.light,
+                            icon: Icon(Icons.light_mode_outlined),
+                            label: Text('Terang'),
+                          ),
+                          ButtonSegment<ThemeMode>(
+                            value: ThemeMode.dark,
+                            icon: Icon(Icons.dark_mode_outlined),
+                            label: Text('Gelap'),
+                          ),
+                        ],
+                        selected: {mode},
+                        onSelectionChanged: (newSelection) {
+                          SessionStore.instance.setThemeMode(newSelection.first);
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Pembaruan Aplikasi',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Versi saat ini: v2.0.2 (Build 3)',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey.shade600,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        final url = '${SessionStore.instance.apiBaseUrl}/downloads/netpulse.apk';
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Unduh Pembaruan APK'),
+                            content: SelectableText(
+                              'APK terbaru dapat diunduh langsung di browser:\n\n$url',
+                            ),
+                            actions: [
+                              FilledButton(
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: const Text('Tutup'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.download),
+                      label: const Text('Link Download APK Terbaru'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Card(
             child: ListTile(
               leading: const Icon(Icons.info_outline),
               title: const Text('About'),

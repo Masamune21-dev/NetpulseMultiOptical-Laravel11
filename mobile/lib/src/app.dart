@@ -11,21 +11,28 @@ class NetpulseApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Netpulse',
-      navigatorKey: AppNavigator.navigatorKey,
-      theme: buildNetpulseTheme(),
-      home: FutureBuilder(
-        future: SessionStore.instance.load().then((_) {
-          return FcmService.instance.syncToken();
-        }),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const _Splash();
-          }
-          return const Gate();
-        },
-      ),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: SessionStore.instance.themeModeNotifier,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          title: 'Netpulse',
+          navigatorKey: AppNavigator.navigatorKey,
+          theme: buildNetpulseTheme(),
+          darkTheme: buildNetpulseDarkTheme(),
+          themeMode: mode,
+          home: FutureBuilder(
+            future: SessionStore.instance.load().then((_) {
+              return FcmService.instance.syncToken();
+            }),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const _Splash();
+              }
+              return const Gate();
+            },
+          ),
+        );
+      },
     );
   }
 }

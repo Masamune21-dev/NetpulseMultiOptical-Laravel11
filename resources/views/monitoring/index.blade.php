@@ -45,7 +45,7 @@
     {{-- Stats Grid --}}
     <div class="mon-stats-grid">
         <div class="mon-stat mon-stat--now">
-            <div class="mon-stat__label">Sekarang (RX)</div>
+            <div class="mon-stat__label">Sekarang (RX) <span id="statNowBadge" class="mon-rx-badge"></span></div>
             <div class="mon-stat__val" id="statNow">—</div>
             <div class="mon-stat__unit">dBm</div>
         </div>
@@ -112,7 +112,32 @@
             var m = part.trim().match(/^(\w+):\s*([\-\d.]+|-)/) ;
             if (m) parts[m[1].toLowerCase()] = m[2];
         });
-        if (parts.now)  document.getElementById('statNow').textContent  = parts.now  === '-' ? '—' : parts.now;
+        if (parts.now) {
+            var nowVal = parts.now === '-' ? '—' : parts.now;
+            document.getElementById('statNow').textContent = nowVal;
+            var badgeEl = document.getElementById('statNowBadge');
+            if (badgeEl) {
+                if (nowVal === '—') {
+                    badgeEl.style.display = 'none';
+                } else {
+                    var n = parseFloat(nowVal);
+                    badgeEl.style.display = 'inline-block';
+                    if (n <= -35) {
+                        badgeEl.className = 'mon-rx-badge mon-rx-down';
+                        badgeEl.textContent = 'LOS';
+                    } else if (n < -26) {
+                        badgeEl.className = 'mon-rx-badge mon-rx-crit';
+                        badgeEl.textContent = 'CRITICAL';
+                    } else if (n < -22) {
+                        badgeEl.className = 'mon-rx-badge mon-rx-warn';
+                        badgeEl.textContent = 'WARN';
+                    } else {
+                        badgeEl.className = 'mon-rx-badge mon-rx-ok';
+                        badgeEl.textContent = 'NORMAL';
+                    }
+                }
+            }
+        }
         if (parts.avg)  document.getElementById('statAvg').textContent  = parts.avg  === '-' ? '—' : parts.avg;
         if (parts.min)  document.getElementById('statMin').textContent  = parts.min  === '-' ? '—' : parts.min;
         if (parts.max)  document.getElementById('statMax').textContent  = parts.max  === '-' ? '—' : parts.max;
