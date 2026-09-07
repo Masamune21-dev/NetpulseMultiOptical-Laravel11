@@ -374,7 +374,7 @@ class _MapScreenState extends State<MapScreen> {
 class _PinMarker extends StatelessWidget {
   const _PinMarker({required this.icon, required this.tone});
 
-  final IconData icon;
+  final FaIconData icon;
   final Color tone;
 
   @override
@@ -819,7 +819,7 @@ double _mapZoom(List<MapNode> nodes) {
   return 9;
 }
 
-IconData _iconForType(String type) {
+FaIconData _iconForType(String type) {
   return switch (type.toLowerCase()) {
     'router'   => FontAwesomeIcons.networkWired,
     'switch'   => FontAwesomeIcons.server,
