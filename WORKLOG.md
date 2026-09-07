@@ -4,6 +4,17 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-07 — Pembaruan Menyeluruh Dark Mode & Visualisasi Indikator Mobile
+1. **Penyelarasan Tampilan Dark Mode Dashboard & Monitoring**:
+   - Memperbarui seluruh komponen card container (`_QuickMetric`, `_ActionPanel`, `_SectionBox`) di `HomeScreen` agar adaptif mengikuti tema aktif (menghapus hardcode `Colors.white` dan border abu-abu terang).
+   - Menambahkan dot indikator warna status redaman optik pada `_MetricChip` di `MonitoringScreen` (Normal/Warning/Critical/LOS).
+   - Memastikan seluruh teks, background, dan border di `HomeScreen`, `MonitoringScreen`, dan `InterfacesScreen` memiliki kontras yang tajam dan nyaman di mode malam.
+2. **Kompilasi Ulang APK v2.0.2 (Build 4)**:
+   - Bump versi aplikasi menjadi `v2.0.2+4`.
+   - Menghasilkan binary APK rilis terbaru di `public/downloads/netpulse.apk` (56.1 MB).
+
+---
+
 ## 2026-09-07 — Perbaikan Notifikasi Push Bergambar (FCM Image Notification)
 1. **Pembersihan Token Kedaluwarsa & Auto-Prune**:
    - Membersihkan token perangkat basi (`UNREGISTERED`/`NotRegistered`) yang tertinggal dari instalasi APK lama di tabel `device_tokens`.
