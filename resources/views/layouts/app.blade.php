@@ -108,7 +108,7 @@
                         </a>
                     </li>
                     <li class="sidebar-download-item">
-                        <a href="/downloads/netpulse.apk" target="_blank" download class="sidebar-apk-link">
+                        <a href="/downloads/netpulse.apk?v=2.0.2" target="_blank" download class="sidebar-apk-link">
                             <i class="fab fa-android text-success"></i><span>Download APK</span>
                             <span class="badge-apk-tag">v2.0.2</span>
                         </a>
@@ -187,7 +187,7 @@
                         </div>
                     </div>
 
-                    <a href="/downloads/netpulse.apk" class="topbar-apk-btn" title="Unduh Netpulse Mobile APK" download target="_blank">
+                    <a href="/downloads/netpulse.apk?v=2.0.2" class="topbar-apk-btn" title="Unduh Netpulse Mobile APK" download target="_blank">
                         <i class="fab fa-android"></i> <span>APK v2.0.2</span>
                     </a>
 

@@ -4,14 +4,17 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
-## 2026-09-07 — Pembaruan Menyeluruh Dark Mode & Visualisasi Indikator Mobile
-1. **Penyelarasan Tampilan Dark Mode Dashboard & Monitoring**:
+## 2026-09-07 — Pembaruan Menyeluruh Dark Mode, Cache-Busting APK v2.0.2
+1. **Bypass Cache Cloudflare untuk File APK**:
+   - Menambahkan konfigurasi Nginx `location ~* \.apk$` dengan header `Cache-Control: no-cache, no-store, must-revalidate, max-age=0` agar Cloudflare dan browser tidak menyajikan file APK versi lama (`cf-cache-status: BYPASS`).
+   - Menyediakan link unduh langsung versi spesifik `/downloads/netpulse-v2.0.2.apk` dan `/downloads/netpulse.apk?v=2.0.2`.
+2. **Penyelarasan Tampilan Dark Mode Dashboard & Monitoring**:
    - Memperbarui seluruh komponen card container (`_QuickMetric`, `_ActionPanel`, `_SectionBox`) di `HomeScreen` agar adaptif mengikuti tema aktif (menghapus hardcode `Colors.white` dan border abu-abu terang).
    - Menambahkan dot indikator warna status redaman optik pada `_MetricChip` di `MonitoringScreen` (Normal/Warning/Critical/LOS).
    - Memastikan seluruh teks, background, dan border di `HomeScreen`, `MonitoringScreen`, dan `InterfacesScreen` memiliki kontras yang tajam dan nyaman di mode malam.
-2. **Kompilasi Ulang APK v2.0.2 (Build 4)**:
+3. **Kompilasi Ulang APK v2.0.2 (Build 4)**:
    - Bump versi aplikasi menjadi `v2.0.2+4`.
-   - Menghasilkan binary APK rilis terbaru di `public/downloads/netpulse.apk` (56.1 MB).
+   - Menghasilkan binary APK rilis terbaru di `public/downloads/netpulse-v2.0.2.apk` dan `netpulse.apk` (56.1 MB).
 
 ---
 
