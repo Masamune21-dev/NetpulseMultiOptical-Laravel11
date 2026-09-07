@@ -27,6 +27,31 @@ Route::get('/', function () {
     return redirect()->to('/login');
 });
 
+// Endpoint unduh APK kanonis — dynamic no-cache, file tersimpan di HP selalu netpulse.apk
+Route::get('/download/app', function () {
+    $path = public_path('downloads/netpulse.apk');
+    if (!file_exists($path)) {
+        abort(404, 'File APK belum tersedia.');
+    }
+    return response()->download($path, 'netpulse.apk', [
+        'Cache-Control' => 'no-cache, no-store, must-revalidate, max-age=0',
+        'Pragma' => 'no-cache',
+        'Expires' => '0',
+    ]);
+});
+
+Route::get('/downloads/netpulse.apk', function () {
+    $path = public_path('downloads/netpulse.apk');
+    if (!file_exists($path)) {
+        abort(404, 'File APK belum tersedia.');
+    }
+    return response()->download($path, 'netpulse.apk', [
+        'Cache-Control' => 'no-cache, no-store, must-revalidate, max-age=0',
+        'Pragma' => 'no-cache',
+        'Expires' => '0',
+    ]);
+});
+
 Route::get('/login', [AuthController::class, 'showLogin']);
 Route::post('/login', [AuthController::class, 'login']);
 

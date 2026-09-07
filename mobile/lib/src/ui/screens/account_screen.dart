@@ -266,7 +266,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     height: 44,
                     child: OutlinedButton.icon(
                       onPressed: () {
-                        final url = '${SessionStore.instance.apiBaseUrl}/downloads/netpulse.apk?v=202';
+                        final url = '${SessionStore.instance.apiBaseUrl}/download/app';
                         showDialog(
                           context: context,
                           builder: (ctx) => AlertDialog(
