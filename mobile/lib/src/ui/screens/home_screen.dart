@@ -4,6 +4,7 @@ import '../../api/api_client.dart';
 import '../../auth/session_store.dart';
 import '../../features/dashboard/dashboard_models.dart';
 import '../../features/dashboard/dashboard_service.dart';
+import '../../theme/theme_helper.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -360,14 +361,14 @@ class _QuickMetric extends StatelessWidget {
                 Text(
                   label,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF334155),
+                    color: context.textMuted,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   sub,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: const Color(0xFF94A3B8),
+                    color: context.textFaint,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -454,7 +455,7 @@ class _NetworkHealthSection extends StatelessWidget {
               child: Text(
                 '${health.total} device terdaftar',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: const Color(0xFF94A3B8),
+                  color: context.textFaint,
                 ),
               ),
             ),
@@ -574,7 +575,7 @@ class _ActionPanel extends StatelessWidget {
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF475569),
+                    color: context.textMuted,
                   ),
                 ),
               ],
@@ -647,7 +648,7 @@ class _PortRow extends StatelessWidget {
                   port.ifName,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1E293B),
+                    color: context.textPrimary,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -655,14 +656,14 @@ class _PortRow extends StatelessWidget {
                   Text(
                     port.ifAlias!,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: const Color(0xFF94A3B8),
+                      color: context.textFaint,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 Text(
                   port.deviceName,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: const Color(0xFF64748B),
+                    color: context.textMuted,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -688,7 +689,7 @@ class _PortRow extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: barPct,
                     minHeight: 5,
-                    backgroundColor: const Color(0xFFE2E8F0),
+                    backgroundColor: context.chartGrid,
                     valueColor: AlwaysStoppedAnimation<Color>(rxColor),
                   ),
                 ),
@@ -696,7 +697,7 @@ class _PortRow extends StatelessWidget {
                 Text(
                   'TX: ${port.txPower.toStringAsFixed(2)} dBm',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: const Color(0xFF94A3B8),
+                    color: context.textFaint,
                   ),
                 ),
               ],
@@ -805,7 +806,7 @@ class _AlertRow extends StatelessWidget {
                   alert.message,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1E293B),
+                    color: context.textPrimary,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -814,7 +815,7 @@ class _AlertRow extends StatelessWidget {
                 Text(
                   [alert.deviceName, if (alert.ifName?.isNotEmpty == true) alert.ifName!].join(' · '),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: const Color(0xFF64748B),
+                    color: context.textMuted,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -825,7 +826,7 @@ class _AlertRow extends StatelessWidget {
           Text(
             timeAgo,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: const Color(0xFF94A3B8),
+              color: context.textFaint,
             ),
           ),
         ],
@@ -981,11 +982,13 @@ class _DashboardSkeleton extends StatelessWidget {
   }
 
   static Widget _skeletonBox({required double height}) {
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE2E8F0),
-        borderRadius: BorderRadius.circular(16),
+    return Builder(
+      builder: (context) => Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: context.chartGrid,
+          borderRadius: BorderRadius.circular(16),
+        ),
       ),
     );
   }

@@ -4,6 +4,23 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-07 — Perataan Dark Mode Mobile & Perampingan Kartu Filter Peta
+1. **Perataan Tema Gelap Menyeluruh (Fixed)**:
+   - Melengkapi `buildNetpulseDarkTheme()` (`navigationBar`, `bottomSheet`, `dialog`, `switch`, `dropdown`, divider) + helper baru `theme_helper.dart` (`cardBg/cardBorder/subtleBg/textPrimary/textMuted/chartGrid`).
+   - `HomeScreen`: teks grow menjadi adaptif (`textPrimary/textMuted/textFaint`), skeleton mengikuti tema.
+   - `InterfaceTrafficScreen`: kartu header/chart/summary, chip range, grid & label chart mengikuti tema.
+   - `MonitoringScreen`: grid & label chart, chip range mengikuti tema.
+   - `InterfacesScreen`: teks counter + empty-state mengikuti tema.
+   - `MapScreen`: background mengikuti tema.
+2. **Perampingan Kartu Line Filter Peta (Fixed)**:
+   - `_TopPanel` diubah dari kartu besar bertumpuk (judul + Wrap 2 baris) menjadi satu baris horizontal scrollable yang ramping (ikon filter + 4 chip compact), tinggi kartu turun drastis sehingga peta terlihat lega.
+   - `_LegendCard` diubah menjadi pill ramping satu baris yang bisa di-tap untuk expand/collapse legenda, margin overlay diperketat (10px).
+3. **Rilis APK v2.0.3 (Build 5)**:
+   - Bump `mobile/pubspec.yaml` ke `2.0.3+5`, teks versi di `account_screen.dart` diselaraskan.
+   - Build release sukses via `bin/build-apk.sh`, `aapt` terverifikasi `versionCode=5 versionName=2.0.3`, tersedia di `/download/app`.
+
+---
+
 ## 2026-09-07 — Endpoint Unduh APK Kanonis Tunggal & Otomasi Replace
 1. **Endpoint Unduh Dinamis `/download/app`**:
    - Menyediakan rute download dinamis di `routes/web.php` (`/download/app`) yang menyajikan binary APK langsung dari backend dengan header `Content-Disposition: attachment; filename="netpulse.apk"` dan `Cache-Control: no-cache, no-store`.

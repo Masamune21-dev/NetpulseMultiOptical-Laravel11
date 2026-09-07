@@ -4,6 +4,7 @@ import '../../api/api_client.dart';
 import '../../auth/session_store.dart';
 import '../../features/interfaces/interfaces_models.dart';
 import '../../features/interfaces/interfaces_service.dart';
+import '../../theme/theme_helper.dart';
 import 'interface_traffic_screen.dart';
 
 class InterfacesScreen extends StatefulWidget {
@@ -246,14 +247,14 @@ class _InterfacesScreenState extends State<InterfacesScreen> {
     if (_rows.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        children: const [
-          SizedBox(height: 80),
+        children: [
+          const SizedBox(height: 80),
           Center(
             child: Padding(
-              padding: EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
               child: Text(
                 'Tidak ada interface ditemukan',
-                style: TextStyle(color: Color(0xFF94A3B8)),
+                style: TextStyle(color: context.textFaint),
               ),
             ),
           ),
@@ -370,7 +371,7 @@ class _FilterBar extends StatelessWidget {
               child: Text(
                 '$total interfaces',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: const Color(0xFF64748B),
+                  color: context.textMuted,
                   fontWeight: FontWeight.w700,
                 ),
               ),

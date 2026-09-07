@@ -34,9 +34,11 @@ Route::get('/download/app', function () {
         abort(404, 'File APK belum tersedia.');
     }
     return response()->download($path, 'netpulse.apk', [
-        'Cache-Control' => 'no-cache, no-store, must-revalidate, max-age=0',
-        'Pragma' => 'no-cache',
-        'Expires' => '0',
+        'Content-Type'        => 'application/vnd.android.package-archive',
+        'Cache-Control'       => 'no-cache, no-store, must-revalidate, max-age=0',
+        'Pragma'              => 'no-cache',
+        'Expires'             => '0',
+        'X-Accel-Expires'     => '0',
     ]);
 });
 
@@ -46,9 +48,11 @@ Route::get('/downloads/netpulse.apk', function () {
         abort(404, 'File APK belum tersedia.');
     }
     return response()->download($path, 'netpulse.apk', [
-        'Cache-Control' => 'no-cache, no-store, must-revalidate, max-age=0',
-        'Pragma' => 'no-cache',
-        'Expires' => '0',
+        'Content-Type'        => 'application/vnd.android.package-archive',
+        'Cache-Control'       => 'no-cache, no-store, must-revalidate, max-age=0',
+        'Pragma'              => 'no-cache',
+        'Expires'             => '0',
+        'X-Accel-Expires'     => '0',
     ]);
 });
 
