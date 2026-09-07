@@ -255,7 +255,7 @@ class _AccountScreenState extends State<AccountScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Versi saat ini: v2.0.2 (Build 3)',
+                    'Versi saat ini: v2.0.2 (Build 4)',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.grey.shade600,
                         ),
@@ -266,7 +266,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     height: 44,
                     child: OutlinedButton.icon(
                       onPressed: () {
-                        final url = '${SessionStore.instance.apiBaseUrl}/downloads/netpulse.apk';
+                        final url = '${SessionStore.instance.apiBaseUrl}/downloads/netpulse.apk?v=202';
                         showDialog(
                           context: context,
                           builder: (ctx) => AlertDialog(
