@@ -255,9 +255,9 @@ class _AccountScreenState extends State<AccountScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Versi saat ini: v2.0.2 (Build 4)',
+                    'Versi saat ini: v2.0.3 (Build 5)',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                   ),
                   const SizedBox(height: 12),

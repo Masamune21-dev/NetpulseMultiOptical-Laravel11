@@ -5,6 +5,7 @@ import '../../api/api_client.dart';
 import '../../auth/session_store.dart';
 import '../../features/monitoring/monitoring_models.dart';
 import '../../features/monitoring/monitoring_service.dart';
+import '../../theme/theme_helper.dart';
 
 class MonitoringScreen extends StatefulWidget {
   const MonitoringScreen({super.key});
@@ -303,8 +304,14 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
         ? null
         : (values.reduce((a, b) => a > b ? a : b) + 1.5);
 
+    final gridColor = context.chartGrid;
+    final axisColor = context.textMuted;
     return LineChartData(
-      gridData: const FlGridData(show: true),
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        getDrawingHorizontalLine: (_) => FlLine(color: gridColor, strokeWidth: 1),
+      ),
       minY: minY,
       maxY: maxY,
       titlesData: FlTitlesData(
@@ -317,7 +324,7 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
             getTitlesWidget: (value, meta) {
               return Text(
                 value.toStringAsFixed(0),
-                style: const TextStyle(fontSize: 10),
+                style: TextStyle(fontSize: 10, color: axisColor),
               );
             },
           ),
@@ -342,10 +349,10 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
                         angle: -0.55,
                         child: Text(
                           label,
-                          style: const TextStyle(fontSize: 10),
+                          style: TextStyle(fontSize: 10, color: axisColor),
                         ),
                       )
-                    : Text(label, style: const TextStyle(fontSize: 10)),
+                    : Text(label, style: TextStyle(fontSize: 10, color: axisColor)),
               );
             },
           ),
@@ -551,7 +558,7 @@ class _RangeChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final selectedColor = scheme.primary.withValues(alpha: 0.16);
-    final unselectedColor = Colors.white;
+    final unselectedColor = context.cardBg;
     final selectedText = scheme.primary;
     final unselectedText = scheme.onSurface.withValues(alpha: 0.86);
 

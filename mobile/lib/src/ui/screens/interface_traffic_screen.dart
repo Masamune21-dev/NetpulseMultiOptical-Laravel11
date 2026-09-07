@@ -5,6 +5,7 @@ import '../../api/api_client.dart';
 import '../../auth/session_store.dart';
 import '../../features/interfaces/interfaces_models.dart';
 import '../../features/interfaces/interfaces_service.dart';
+import '../../theme/theme_helper.dart';
 
 class InterfaceTrafficScreen extends StatefulWidget {
   const InterfaceTrafficScreen({
@@ -121,9 +122,9 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,10 +139,10 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
                     Flexible(
                       child: Text(
                         meta?.ifName ?? widget.initialIfName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF1E293B),
+                          color: context.textPrimary,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -150,16 +151,16 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
+                        color: context.subtleBg,
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(color: context.cardBorder),
                       ),
                       child: Text(
                         speed,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF475569),
+                          color: context.textMuted,
                           fontFamily: 'monospace',
                         ),
                       ),
@@ -189,9 +190,9 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
             const SizedBox(height: 4),
             Text(
               alias,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF64748B),
+                color: context.textMuted,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -200,10 +201,10 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
             const SizedBox(height: 6),
             Text(
               ip.isNotEmpty ? '$device · $ip' : device,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF94A3B8),
+                color: context.textFaint,
               ),
             ),
           ],
@@ -224,11 +225,12 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
           labelStyle: TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: 12,
-            color: selected ? Colors.white : const Color(0xFF475569),
+            color: selected ? Colors.white : context.textMuted,
           ),
           selectedColor: const Color(0xFF6366F1),
+          backgroundColor: context.cardBg,
           side: BorderSide(
-            color: selected ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0),
+            color: selected ? const Color(0xFF6366F1) : context.cardBorder,
           ),
           visualDensity: VisualDensity.compact,
         ),
@@ -248,9 +250,9 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 12, 12, 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.cardBorder),
       ),
       child: SizedBox(
         height: 260,
@@ -268,13 +270,18 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
                     ),
                   )
                 : (_result?.data.isEmpty ?? true)
-                    ? const Center(child: Text('Belum ada data traffic'))
-                    : LineChart(_chartData()),
+                    ? Center(
+                        child: Text(
+                          'Belum ada data traffic',
+                          style: TextStyle(color: context.textMuted),
+                        ),
+                      )
+                    : LineChart(_chartData(context)),
       ),
     );
   }
 
-  LineChartData _chartData() {
+  LineChartData _chartData(BuildContext context) {
     final points = _result?.data ?? const [];
     final inSpots = <FlSpot>[];
     final outSpots = <FlSpot>[];
@@ -297,6 +304,8 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
         ? 1.0
         : (len / 5).floorToDouble().clamp(1.0, len.toDouble()).toDouble();
 
+    final gridColor = context.chartGrid;
+    final axisLabelColor = context.textMuted;
     return LineChartData(
       minY: 0,
       maxY: maxY,
@@ -305,7 +314,7 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
         drawVerticalLine: false,
         horizontalInterval: maxY / 4,
         getDrawingHorizontalLine: (_) => FlLine(
-          color: const Color(0xFFE2E8F0),
+          color: gridColor,
           strokeWidth: 1,
         ),
       ),
@@ -319,7 +328,7 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
             interval: maxY / 4,
             getTitlesWidget: (v, _) => Text(
               _formatMbpsTick(v),
-              style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 10, color: axisLabelColor),
             ),
           ),
         ),
@@ -335,7 +344,7 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
                   _formatLabel(points[idx].createdAt),
-                  style: const TextStyle(fontSize: 9.5, color: Color(0xFF64748B)),
+                  style: TextStyle(fontSize: 9.5, color: axisLabelColor),
                 ),
               );
             },
@@ -345,8 +354,8 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
       borderData: FlBorderData(
         show: true,
         border: Border(
-          left: BorderSide(color: Colors.grey.shade300),
-          bottom: BorderSide(color: Colors.grey.shade300),
+          left: BorderSide(color: gridColor),
+          bottom: BorderSide(color: gridColor),
         ),
       ),
       lineBarsData: [
@@ -420,9 +429,9 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.cardBorder),
       ),
       child: Column(
         children: [

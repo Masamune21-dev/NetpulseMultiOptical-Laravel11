@@ -11,6 +11,7 @@ import '../../api/api_client.dart';
 import '../../auth/session_store.dart';
 import '../../features/map/map_models.dart';
 import '../../features/map/map_service.dart';
+import '../../theme/theme_helper.dart';
 
 enum _LinkFilter { all, up, warning, down }
 
@@ -170,9 +171,11 @@ class _MapScreenState extends State<MapScreen> {
           : Stack(
               children: [
                 Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Color(0xFFF2F8F7), Color(0xFFE8F1F8)],
+                      colors: context.isDark
+                          ? const [Color(0xFF0B1120), Color(0xFF0F172A)]
+                          : const [Color(0xFFF2F8F7), Color(0xFFE8F1F8)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -192,9 +195,9 @@ class _MapScreenState extends State<MapScreen> {
                   ],
                 ),
                 Positioned(
-                  left: 12,
-                  right: 12,
-                  top: 12,
+                  left: 10,
+                  right: 10,
+                  top: 8,
                   child: SafeArea(
                     bottom: false,
                     child: _TopPanel(
@@ -209,9 +212,9 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
                 Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 16,
+                  left: 10,
+                  right: 10,
+                  bottom: 10,
                   child: _LegendCard(
                     nodes: _nodes.length,
                     visibleLinks: visibleLinks.length,
@@ -474,55 +477,68 @@ class _TopPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFD8E3EE)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Line Filter',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+        color: context.cardBg.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: context.isDark ? 0.30 : 0.08,
+            ),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _filterChip(
-                context: context,
-                value: _LinkFilter.all,
-                label: 'All',
-                count: total,
-                color: const Color(0xFF334155),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.filter_alt_outlined,
+            size: 16,
+            color: context.textMuted,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _filterChip(
+                    context: context,
+                    value: _LinkFilter.all,
+                    label: 'All',
+                    count: total,
+                    color: const Color(0xFF64748B),
+                  ),
+                  const SizedBox(width: 6),
+                  _filterChip(
+                    context: context,
+                    value: _LinkFilter.up,
+                    label: 'Up',
+                    count: upLinks,
+                    color: const Color(0xFF16A34A),
+                  ),
+                  const SizedBox(width: 6),
+                  _filterChip(
+                    context: context,
+                    value: _LinkFilter.warning,
+                    label: 'Warn',
+                    count: warningLinks,
+                    color: const Color(0xFFF59E0B),
+                  ),
+                  const SizedBox(width: 6),
+                  _filterChip(
+                    context: context,
+                    value: _LinkFilter.down,
+                    label: 'Down',
+                    count: downLinks,
+                    color: const Color(0xFFDC2626),
+                  ),
+                ],
               ),
-              _filterChip(
-                context: context,
-                value: _LinkFilter.up,
-                label: 'Up',
-                count: upLinks,
-                color: const Color(0xFF16A34A),
-              ),
-              _filterChip(
-                context: context,
-                value: _LinkFilter.warning,
-                label: 'Warning',
-                count: warningLinks,
-                color: const Color(0xFFF59E0B),
-              ),
-              _filterChip(
-                context: context,
-                value: _LinkFilter.down,
-                label: 'Down',
-                count: downLinks,
-                color: const Color(0xFFDC2626),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -541,20 +557,24 @@ class _TopPanel extends StatelessWidget {
       label: Text('$label ($count)'),
       selected: selected,
       showCheckmark: false,
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
       onSelected: (_) => onFilterChanged(value),
-      labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+      labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
         fontWeight: FontWeight.w700,
-        color: selected ? color : const Color(0xFF334155),
+        fontSize: 11.5,
+        color: selected ? color : context.textMuted,
       ),
       selectedColor: color.withValues(alpha: 0.14),
-      backgroundColor: Colors.white,
+      backgroundColor: context.subtleBg,
       side: BorderSide(color: color.withValues(alpha: selected ? 0.35 : 0.2)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
   }
 }
 
-class _LegendCard extends StatelessWidget {
+class _LegendCard extends StatefulWidget {
   const _LegendCard({
     required this.nodes,
     required this.visibleLinks,
@@ -568,47 +588,92 @@ class _LegendCard extends StatelessWidget {
   final _LinkFilter filter;
 
   @override
+  State<_LegendCard> createState() => _LegendCardState();
+}
+
+class _LegendCardState extends State<_LegendCard> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFD8E3EE)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.router, size: 18),
-              const SizedBox(width: 6),
-              Text('$nodes nodes'),
-              const SizedBox(width: 14),
-              const Icon(Icons.timeline, size: 18),
-              const SizedBox(width: 6),
-              Text('$visibleLinks / $totalLinks links'),
-              const Spacer(),
-              Text(
-                _filterLabel(filter),
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF475569),
+    return GestureDetector(
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        decoration: BoxDecoration(
+          color: context.cardBg.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.cardBorder),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: context.isDark ? 0.30 : 0.08,
+              ),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.router, size: 15, color: context.textMuted),
+                const SizedBox(width: 5),
+                Text(
+                  '${widget.nodes}',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                    fontSize: 11.5,
+                  ),
                 ),
+                const SizedBox(width: 10),
+                Icon(Icons.timeline, size: 15, color: context.textMuted),
+                const SizedBox(width: 5),
+                Text(
+                  '${widget.visibleLinks}/${widget.totalLinks}',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: context.textPrimary,
+                    fontSize: 11.5,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  _filterLabel(widget.filter),
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: context.textMuted,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  _expanded
+                      ? Icons.keyboard_arrow_down_rounded
+                      : Icons.keyboard_arrow_up_rounded,
+                  size: 16,
+                  color: context.textMuted,
+                ),
+              ],
+            ),
+            if (_expanded) ...[
+              const SizedBox(height: 8),
+              const Wrap(
+                spacing: 12,
+                runSpacing: 6,
+                children: [
+                  _LegendDot(color: Color(0xFF16A34A), label: 'Up'),
+                  _LegendDot(color: Color(0xFFF59E0B), label: 'Warning'),
+                  _LegendDot(color: Color(0xFFDC2626), label: 'Down'),
+                ],
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          const Wrap(
-            spacing: 12,
-            runSpacing: 6,
-            children: [
-              _LegendDot(color: Color(0xFF16A34A), label: 'Up'),
-              _LegendDot(color: Color(0xFFF59E0B), label: 'Warning'),
-              _LegendDot(color: Color(0xFFDC2626), label: 'Down'),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
