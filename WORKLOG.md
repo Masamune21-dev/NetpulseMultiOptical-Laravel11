@@ -4,6 +4,20 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-07 — Optimasi Poller SNMP: Pemulihan Siklus Polling Tiap 1 Menit
+1. **Akar Masalah Interval 2 Menit Teridentifikasi**:
+   - Terdapat perangkat yang offline / unreachable (`SW-BMKV-DAMARWULAN`, `192.168.123.29`).
+   - Extension PHP SNMP bawaan menjalankan 10 pemanggilan `snmp2_walk` berturut-turut tanpa batas timeout/retries eksplisit (default 1 detik x 5 retries = 50 detik) untuk perangkat mati tersebut.
+   - Akibatnya, seluruh proses `poll:interfaces` memakan waktu **67 detik** (> 60 detik). Mekanisme `withoutOverlapping()` Laravel scheduler menahan eksekusi di menit berikutnya karena lock masih aktif, sehingga cron menit ke-2 selalu ter-skip dan data hanya masuk setiap 2 menit (interval genap/ganjil).
+2. **Perbaikan Fast Probe & Subprocess Timeout**:
+   - `InterfaceDiscovery.php`: Menambahkan batas `$snmpTimeout = 1000000; $snmpRetries = 1;` pada seluruh panggilan SNMP.
+   - Jika probe OID pertama (`ifIndex`) gagal, sistem langsung menyimpulkan perangkat offline dan skip seketika (< 1 detik) tanpa membuang waktu mencoba 9 OID berikutnya.
+   - Menambahkan parameter timeout eksplisit dan fallback timeout pada panggilan Huawei optical MIB.
+   - `routes/console.php`: Menyetel `poll:interfaces --timeout=30` dengan `withoutOverlapping(10)` agar proses subprocess perangkat mati diputus maksimal dalam 30 detik.
+   - **Hasil**: Waktu eksekusi polling seluruh 23 perangkat SNMP turun drastis dari **67 detik menjadi 5.4 detik**! Scheduler kini berjalan lancar **tepat setiap 1 menit** tanpa pernah ter-skip.
+
+---
+
 ## 2026-09-07 — Perataan Dark Mode Mobile & Perampingan Kartu Filter Peta
 1. **Perataan Tema Gelap Menyeluruh (Fixed)**:
    - Melengkapi `buildNetpulseDarkTheme()` (`navigationBar`, `bottomSheet`, `dialog`, `switch`, `dropdown`, divider) + helper baru `theme_helper.dart` (`cardBg/cardBorder/subtleBg/textPrimary/textMuted/chartGrid`).
