@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'firebase' => [
+        'service_account_json' => env('FIREBASE_SERVICE_ACCOUNT_JSON'),
+    ],
+
 ];

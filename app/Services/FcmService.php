@@ -11,7 +11,7 @@ class FcmService
      */
     private function credentials(): array
     {
-        $path = (string) env('FIREBASE_SERVICE_ACCOUNT_JSON', '');
+        $path = (string) (config('services.firebase.service_account_json') ?: env('FIREBASE_SERVICE_ACCOUNT_JSON', ''));
         if ($path === '') {
             throw new \RuntimeException('FIREBASE_SERVICE_ACCOUNT_JSON is not set');
         }
@@ -72,7 +72,6 @@ class FcmService
         }
 
         $ok = openssl_sign($signingInput, $signature, $key, OPENSSL_ALGO_SHA256);
-        openssl_free_key($key);
 
         if (!$ok) {
             throw new \RuntimeException('Failed to sign JWT');
