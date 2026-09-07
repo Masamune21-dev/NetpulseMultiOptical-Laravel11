@@ -4,6 +4,18 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-07 — Perbaikan Notifikasi Push Bergambar (FCM Image Notification)
+1. **Pembersihan Token Kedaluwarsa & Auto-Prune**:
+   - Membersihkan token perangkat basi (`UNREGISTERED`/`NotRegistered`) yang tertinggal dari instalasi APK lama di tabel `device_tokens`.
+   - Menambahkan mekanisme auto-prune pada `SettingsApiController::sendManualPush`: saat FCM mengembalikan status `NotRegistered`, token otomatis dihapus dari database agar pengiriman berikutnya tidak terhambat.
+2. **Pengiriman & Penanganan Gambar (BigPictureStyleInformation)**:
+   - Menyertakan field `image` pada payload `data` di `SettingsApiController` dan `FcmService.php`.
+   - Di sisi aplikasi mobile (`mobile/lib/src/push/fcm_service.dart`), fungsi `_showForegroundNotification` kini mengunduh gambar ke cache lokal dan membungkusnya ke dalam `BigPictureStyleInformation` (`FilePathAndroidBitmap`).
+   - Notifikasi bergambar kini tampil sempurna di system tray Android baik saat aplikasi sedang dibuka di latar depan maupun saat berada di latar belakang.
+   - APK release diperbarui ke `/public/downloads/netpulse.apk`.
+
+---
+
 ## 2026-09-07 — Fitur Operasional Web & Peningkatan Mobile App v2.0.2
 1. **Fitur Operasional Web (Tema Neo-Brutalism)**:
    - Menambahkan tombol unduh langsung APK Mobile Netpulse di topbar dan sidebar nav (`/downloads/netpulse.apk`) dengan badge versi `v2.0.2`.

@@ -292,6 +292,9 @@ class SettingsApiController extends Controller
             'ts' => date('c'),
             'sent_by' => (string) ($user['username'] ?? $user['name'] ?? 'admin'),
         ];
+        if ($imageUrl !== '') {
+            $data['image'] = $imageUrl;
+        }
 
         foreach ($tokens as $token) {
             $token = (string) $token;
@@ -309,10 +312,17 @@ class SettingsApiController extends Controller
                 $sent++;
             } catch (\Throwable $e) {
                 $failed++;
-                $errors[] = substr($e->getMessage(), 0, 200);
+                $msg = $e->getMessage();
+                $errors[] = substr($msg, 0, 200);
+
+                // Auto prune token yang sudah tidak terdaftar di FCM
+                if (str_contains($msg, 'NotRegistered') || str_contains($msg, 'UNREGISTERED')) {
+                    DB::table('device_tokens')->where('token', $token)->delete();
+                }
+
                 Log::warning('Manual mobile push failed', [
                     'token_prefix' => substr($token, 0, 16),
-                    'error' => $e->getMessage(),
+                    'error' => $msg,
                 ]);
             }
         }

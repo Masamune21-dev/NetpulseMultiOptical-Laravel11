@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../api/api_client.dart';
 import '../auth/session_store.dart';
@@ -114,9 +117,42 @@ class FcmService {
     return granted ?? true;
   }
 
+  Future<String?> _downloadAndSaveFile(String url, String fileName) async {
+    try {
+      final uri = Uri.tryParse(url);
+      if (uri == null) return null;
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) return null;
+      final directory = await getTemporaryDirectory();
+      final filePath = '${directory.path}/$fileName';
+      final file = File(filePath);
+      await file.writeAsBytes(response.bodyBytes);
+      return filePath;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
     if (notification == null) return;
+
+    final imgUrl = notification.android?.imageUrl ??
+        message.data['image']?.toString();
+
+    BigPictureStyleInformation? bigPictureStyle;
+    if (imgUrl != null && imgUrl.isNotEmpty) {
+      final fileName = 'notif_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final localPath = await _downloadAndSaveFile(imgUrl, fileName);
+      if (localPath != null) {
+        bigPictureStyle = BigPictureStyleInformation(
+          FilePathAndroidBitmap(localPath),
+          contentTitle: notification.title,
+          summaryText: notification.body,
+          hideExpandedLargeIcon: true,
+        );
+      }
+    }
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -126,6 +162,7 @@ class FcmService {
         importance: Importance.high,
         priority: Priority.high,
         icon: '@mipmap/ic_launcher',
+        styleInformation: bigPictureStyle,
       ),
     );
 

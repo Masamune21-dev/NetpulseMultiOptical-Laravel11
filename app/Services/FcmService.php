@@ -121,6 +121,7 @@ class FcmService
         if ($imageUrl !== '') {
             $notification['image'] = $imageUrl;
             $android['notification'] = ['image' => $imageUrl];
+            $data['image'] = $imageUrl;
         }
 
         $payload = [
