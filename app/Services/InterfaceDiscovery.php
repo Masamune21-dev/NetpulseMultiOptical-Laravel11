@@ -45,19 +45,69 @@ class InterfaceDiscovery
         $alertState = $isCli ? $this->loadAlertState($alertStateFile, $deviceId) : [];
         $alertStateDirty = false;
 
-        $ifIndex = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.1');
-        $ifName = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.1');
-        $ifDescr = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.2');
-        $ifAlias = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.18');
-        $ifOper = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.8');
+        // Fast probe with 1s timeout and 1 retry. If the device is down, skip immediately
+        // instead of hanging on 10 successive walks for 60+ seconds.
+        $snmpTimeout = 1000000; // 1s
+        $snmpRetries = 1;
+
+        $ifIndex = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.1', $snmpTimeout, $snmpRetries);
+
+        if (!$ifIndex) {
+            if ($isCli) {
+                $deviceLabel = trim(($device->device_name ?? '') . ' (' . $ip . ')');
+                $timeLabel = date('Y-m-d H:i:s');
+                $devKey = "dev:{$deviceId}";
+                $prevDev = $alertState[$devKey] ?? null;
+                $prevKnown = is_array($prevDev);
+                $prevUp = $prevKnown ? (bool) ($prevDev['device_up'] ?? false) : true;
+
+                $alertState[$devKey] = [
+                    'device_up' => false,
+                    'last_check' => $timeLabel,
+                ];
+                $this->saveAlertState($alertStateFile, $alertState);
+
+                if ($prevKnown && $prevUp && ($alertSettings['device_down'] ?? true)) {
+                    $msg = "🔴 DEVICE DOWN\n📟 Device: {$deviceLabel}\n🕒 Time: {$timeLabel}";
+                    $this->emitAlert(
+                        $alertSettings,
+                        [
+                            'device_id' => $deviceId,
+                            'device_name' => (string) ($device->device_name ?? ''),
+                            'device_ip' => (string) $ip,
+                        ],
+                        null,
+                        'device_down',
+                        'critical',
+                        "Device down: {$deviceLabel}",
+                        $msg
+                    );
+                }
+
+                return [
+                    'success' => false,
+                    'error' => "SKIP device ID: {$deviceId} (IF-MIB unreachable)",
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => 'Cannot read IF-MIB',
+            ];
+        }
+
+        $ifName = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.1', $snmpTimeout, $snmpRetries);
+        $ifDescr = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.2', $snmpTimeout, $snmpRetries);
+        $ifAlias = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.18', $snmpTimeout, $snmpRetries);
+        $ifOper = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.8', $snmpTimeout, $snmpRetries);
 
         // Speed (Mbps) and 64-bit traffic counters. Fallback to 32-bit if HC unavailable.
-        $ifHighSpeed = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.15');
-        $ifSpeed = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.5');
-        $ifHCIn = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.6');
-        $ifHCOut = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.10');
-        $ifIn = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.10');
-        $ifOut = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.16');
+        $ifHighSpeed = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.15', $snmpTimeout, $snmpRetries);
+        $ifSpeed = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.5', $snmpTimeout, $snmpRetries);
+        $ifHCIn = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.6', $snmpTimeout, $snmpRetries);
+        $ifHCOut = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.31.1.1.1.10', $snmpTimeout, $snmpRetries);
+        $ifIn = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.10', $snmpTimeout, $snmpRetries);
+        $ifOut = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.16', $snmpTimeout, $snmpRetries);
 
         // Device up/down alert (CLI only, transition based)
         if ($isCli) {
@@ -108,7 +158,7 @@ class InterfaceDiscovery
             }
         }
 
-        if (!$ifIndex || !$ifName) {
+        if (!$ifName) {
             if ($isCli && $alertStateDirty) {
                 $this->saveAlertState($alertStateFile, $alertState);
             }
@@ -137,7 +187,9 @@ class InterfaceDiscovery
         $opticalNames = @\snmp2_walk(
             $ip,
             $community,
-            '1.3.6.1.4.1.14988.1.1.19.1.1.2'
+            '1.3.6.1.4.1.14988.1.1.19.1.1.2',
+            $snmpTimeout,
+            $snmpRetries
         );
         if ($opticalNames === false) {
             $opticalNames = [];
@@ -150,15 +202,19 @@ class InterfaceDiscovery
             }
 
             $ifIdx = $ifNameMap[$optIfName];
-            $txRaw = \snmp2_get(
+            $txRaw = @\snmp2_get(
                 $ip,
                 $community,
-                "1.3.6.1.4.1.14988.1.1.19.1.1.9.$ifIdx"
+                "1.3.6.1.4.1.14988.1.1.19.1.1.9.$ifIdx",
+                $snmpTimeout,
+                $snmpRetries
             );
-            $rxRaw = \snmp2_get(
+            $rxRaw = @\snmp2_get(
                 $ip,
                 $community,
-                "1.3.6.1.4.1.14988.1.1.19.1.1.10.$ifIdx"
+                "1.3.6.1.4.1.14988.1.1.19.1.1.10.$ifIdx",
+                $snmpTimeout,
+                $snmpRetries
             );
 
             if ($txRaw !== false && $rxRaw !== false) {
@@ -1096,8 +1152,8 @@ class InterfaceDiscovery
         $physToIfIdx = $this->walkHuaweiAliasMap($ip, $community);
 
         // Step 2: Walk hwEntityOpticalRxPower (.8) and hwEntityOpticalTxPower (.9)
-        $rxWalk = @\snmp2_real_walk($ip, $community, '1.3.6.1.4.1.2011.5.25.31.1.1.3.1.8');
-        $txWalk = @\snmp2_real_walk($ip, $community, '1.3.6.1.4.1.2011.5.25.31.1.1.3.1.9');
+        $rxWalk = @\snmp2_real_walk($ip, $community, '1.3.6.1.4.1.2011.5.25.31.1.1.3.1.8', 1000000, 1);
+        $txWalk = @\snmp2_real_walk($ip, $community, '1.3.6.1.4.1.2011.5.25.31.1.1.3.1.9', 1000000, 1);
 
         if (empty($rxWalk) && empty($txWalk)) {
             return [];
@@ -1149,7 +1205,7 @@ class InterfaceDiscovery
      */
     private function walkHuaweiAliasMap(string $ip, string $community): array
     {
-        $walk = @\snmp2_real_walk($ip, $community, '1.3.6.1.2.1.47.1.3.2.1.2');
+        $walk = @\snmp2_real_walk($ip, $community, '1.3.6.1.2.1.47.1.3.2.1.2', 1000000, 1);
         if (!is_array($walk) || empty($walk)) {
             return [];
         }
