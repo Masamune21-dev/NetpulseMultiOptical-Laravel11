@@ -90,6 +90,23 @@
     white-space: nowrap;
 }
 
+.mon-rx-badge {
+    display: none;
+    font-size: 0.62rem;
+    font-weight: 900;
+    padding: 2px 6px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: 2px 2px 0 var(--ink);
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.mon-rx-ok { background: #16a34a; color: #ffffff; }
+.mon-rx-warn { background: #ca8a04; color: #ffffff; }
+.mon-rx-crit { background: #ea580c; color: #ffffff; }
+.mon-rx-down { background: #dc2626; color: #ffffff; }
+
 .mon-stat__unit {
     color: var(--text-soft);
     font-size: 0.72rem;

@@ -135,10 +135,8 @@
                 ? `<span class="badge badge-success status-badge"><span class="status-dot"></span>UP</span>`
                 : `<span class="badge badge-danger status-badge"><span class="status-dot"></span>DOWN</span>`;
 
-            const rx = formatDbm(r.rx_power);
-            const tx = formatDbm(r.tx_power);
-            const rxClass = colorForDbm(r.rx_power);
-            const txClass = colorForDbm(r.tx_power);
+            const rxBadge = renderOpticalBadge(r.rx_power);
+            const txBadge = renderOpticalBadge(r.tx_power, true);
 
             const speed = formatBps(r.if_speed, 0);
             const trafficIn = r.in_rate_bps != null ? formatBps(r.in_rate_bps) : '—';
@@ -166,8 +164,8 @@
                         </div>
                     </td>
                     <td class="if-desc">${description}</td>
-                    <td class="if-num ${rxClass}">${rx}</td>
-                    <td class="if-num ${txClass}">${tx}</td>
+                    <td class="if-opt-cell">${rxBadge}</td>
+                    <td class="if-opt-cell">${txBadge}</td>
                     <td class="if-status-cell">${statusBadge}</td>
                     <td class="if-num">${speed}</td>
                     <td class="if-traffic">
@@ -276,6 +274,24 @@
         const num = parseFloat(v);
         if (Number.isNaN(num)) return '—';
         return num.toFixed(2);
+    }
+
+    function renderOpticalBadge(v, isTx = false) {
+        if (v === null || v === undefined) return '<span class="opt-badge opt-badge-na">—</span>';
+        const n = parseFloat(v);
+        if (Number.isNaN(n)) return '<span class="opt-badge opt-badge-na">—</span>';
+
+        const valStr = n.toFixed(2);
+        if (n <= -35) {
+            return `<span class="opt-badge opt-badge-down"><span class="opt-dot"></span>${valStr} <small>LOS</small></span>`;
+        }
+        if (n < -26) {
+            return `<span class="opt-badge opt-badge-critical"><span class="opt-dot"></span>${valStr} <small>CRIT</small></span>`;
+        }
+        if (n < -22) {
+            return `<span class="opt-badge opt-badge-warn"><span class="opt-dot"></span>${valStr} <small>WARN</small></span>`;
+        }
+        return `<span class="opt-badge opt-badge-ok"><span class="opt-dot"></span>${valStr} <small>OK</small></span>`;
     }
 
     function colorForDbm(v) {

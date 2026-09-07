@@ -1208,6 +1208,147 @@ textarea::placeholder {
     }
 }
 
+/* =========================================================
+   Ecosystem App Switcher & APK Download Button (Neo-Brutalism)
+========================================================= */
+.sidebar-download-item a {
+    background: #e6fffa !important;
+    border-color: #050505 !important;
+}
+
+[data-theme="dark"] .sidebar-download-item a {
+    background: #042f2c !important;
+}
+
+.badge-apk-tag {
+    background: #10b981;
+    color: #ffffff;
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 2px 6px;
+    border: 2px solid #050505;
+    border-radius: 4px;
+    margin-left: auto;
+}
+
+.topbar-apk-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #10b981;
+    color: #ffffff !important;
+    border: 3px solid var(--border);
+    box-shadow: 3px 3px 0 var(--ink);
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    font-weight: 800;
+    font-size: 0.78rem;
+    text-decoration: none;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.topbar-apk-btn:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 var(--ink);
+}
+
+.ecosystem-dropdown {
+    position: relative;
+}
+
+.btn-ecosystem {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    color: var(--text);
+    border: 3px solid var(--border);
+    box-shadow: 3px 3px 0 var(--ink);
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    font-weight: 800;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn-ecosystem:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 var(--ink);
+}
+
+.ecosystem-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 280px;
+    background: var(--surface);
+    border: 3px solid var(--border);
+    box-shadow: 6px 6px 0 var(--ink);
+    border-radius: var(--radius-lg);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.ecosystem-menu.active {
+    display: block;
+}
+
+.ecosystem-menu-header {
+    background: var(--ink-2);
+    border-bottom: 2px solid var(--border);
+    padding: 8px 12px;
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.ecosystem-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 2px solid var(--border);
+    text-decoration: none;
+    color: var(--text);
+    transition: background 0.15s;
+}
+
+.ecosystem-item:last-child {
+    border-bottom: none;
+}
+
+.ecosystem-item:hover {
+    background: var(--sidebar-hover-bg);
+}
+
+.ecosystem-item i {
+    font-size: 1.1rem;
+    width: 22px;
+    text-align: center;
+}
+
+.ecosystem-item-title {
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.ecosystem-item-sub {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    line-height: 1.2;
+    margin-top: 2px;
+}
+
+.text-cyan { color: #00d1ff !important; }
+.text-purple { color: #a855f7 !important; }
+.text-emerald { color: #10b981 !important; }
+.text-amber { color: #f59e0b !important; }
+
 @media print {
     .sidebar,
     .mobile-header,
