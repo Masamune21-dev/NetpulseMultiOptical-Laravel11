@@ -8,7 +8,7 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('poll:interfaces')->everyMinute()->withoutOverlapping();
+Schedule::command('poll:interfaces --timeout=30')->everyMinute()->withoutOverlapping(10);
 
 // Downsample optical stats into hourly/daily rollups so long-range redaman
 // history is preserved cheaply. Runs a few minutes past the hour to capture

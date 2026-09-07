@@ -4,6 +4,18 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-07 — Pemulihan Interval Polling 1 Menit & Eliminasi Flapping Alert
+1. **Stabilisasi Parameter SNMP Timeout & Retries**:
+   - Menyetel timeout SNMP ke **2.0 detik** (`2000000` microsecond) dengan **2 kali retries** (toleransi ~6 detik) pada probe awal `$ifIndex` di `InterfaceDiscovery.php`.
+   - Timeout ini memberikan toleransi yang cukup untuk link wireless/lossy (latency 15-30ms) sehingga perangkat online tidak akan pernah salah dideteksi sebagai offline (menghilangkan false-alarm down/up flapping).
+   - Pada saat yang sama, jika perangkat benar-benar offline (seperti `SW-BMKV-DAMARWULAN`), probe gagal dalam tepat 6 detik dan langsung me-return status `SKIP` tanpa mencoba 9 pemanggilan walk berikutnya yang membuang waktu 50+ detik.
+2. **Kinerja & Hasil Verifikasi**:
+   - Waktu polling paralel seluruh 23 perangkat turun dari 67 detik menjadi **7.1 detik**.
+   - Jadwal `routes/console.php` dipasang `poll:interfaces --timeout=30` dengan `withoutOverlapping(10)`.
+   - **Hasil di Database**: Timestamp `interface_stats` terverifikasi masuk **setiap 60-61 detik (1 menit persis)** tanpa pernah ter-skip lagi, dan log alert tetap stabil tanpa duplikasi alert palsu.
+
+---
+
 ## 2026-09-07 — Perataan Dark Mode Mobile & Perampingan Kartu Filter Peta
 1. **Perataan Tema Gelap Menyeluruh (Fixed)**:
    - Melengkapi `buildNetpulseDarkTheme()` (`navigationBar`, `bottomSheet`, `dialog`, `switch`, `dropdown`, divider) + helper baru `theme_helper.dart` (`cardBg/cardBorder/subtleBg/textPrimary/textMuted/chartGrid`).
