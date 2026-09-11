@@ -4,6 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{{ $pageTitle ?? 'NetPulse' }}</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <script>
+        // NP-6: suntik X-CSRF-TOKEN ke setiap request same-origin non-GET
+        // (fetch & XMLHttpRequest) karena CSRF kini aktif untuk rute /api/* ber-sesi.
+        (function () {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            var token = meta ? meta.getAttribute('content') : '';
+            if (!token) return;
+            var SAFE = /^(GET|HEAD|OPTIONS|TRACE)$/i;
+            function sameOrigin(url) {
+                try {
+                    return new URL(url, window.location.href).origin === window.location.origin;
+                } catch (e) { return false; }
+            }
+            if (window.fetch) {
+                var nativeFetch = window.fetch;
+                window.fetch = function (input, init) {
+                    init = init || {};
+                    var method = init.method || (input instanceof Request ? input.method : 'GET');
+                    var url = input instanceof Request ? input.url : String(input);
+                    if (!SAFE.test(method) && sameOrigin(url)) {
+                        var headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+                        if (!headers.has('X-CSRF-TOKEN')) headers.set('X-CSRF-TOKEN', token);
+                        if (!headers.has('X-Requested-With')) headers.set('X-Requested-With', 'XMLHttpRequest');
+                        init.headers = headers;
+                        if (!init.credentials) init.credentials = 'same-origin';
+                    }
+                    return nativeFetch.call(this, input, init);
+                };
+            }
+            var open = XMLHttpRequest.prototype.open;
+            var send = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.open = function (method, url) {
+                this.__npCsrf = !SAFE.test(String(method)) && sameOrigin(String(url));
+                return open.apply(this, arguments);
+            };
+            XMLHttpRequest.prototype.send = function () {
+                if (this.__npCsrf) {
+                    try { this.setRequestHeader('X-CSRF-TOKEN', token); } catch (e) {}
+                }
+                return send.apply(this, arguments);
+            };
+        })();
+    </script>
 
     <script>
         (function () {
@@ -54,9 +99,12 @@
                     <div class="mobile-subtitle">Network Optical Monitoring</div>
                 </div>
             </div>
-            <a href="/logout" class="mobile-logout" title="Logout" aria-label="Logout">
-                <i class="fas fa-arrow-right-from-bracket"></i>
-            </a>
+            <form method="POST" action="/logout" class="logout-form">
+                @csrf
+                <button type="submit" class="mobile-logout" title="Logout" aria-label="Logout">
+                    <i class="fas fa-arrow-right-from-bracket"></i>
+                </button>
+            </form>
         </header>
 
         {{-- Desktop sidebar --}}
@@ -126,9 +174,12 @@
                         <div class="sidebar-user__name">{{ $currentUser['username'] ?? '-' }}</div>
                         <div class="sidebar-user__role">{{ $currentUser['role'] ?? '' }}</div>
                     </div>
-                    <a href="/logout" class="sidebar-user__logout" title="Logout">
-                        <i class="fas fa-arrow-right-from-bracket"></i>
-                    </a>
+                    <form method="POST" action="/logout" class="logout-form">
+                        @csrf
+                        <button type="submit" class="sidebar-user__logout" title="Logout">
+                            <i class="fas fa-arrow-right-from-bracket"></i>
+                        </button>
+                    </form>
                 </div>
                 <div class="sidebar-version">v2.0 · NetPulse MultiOptical</div>
             </div>

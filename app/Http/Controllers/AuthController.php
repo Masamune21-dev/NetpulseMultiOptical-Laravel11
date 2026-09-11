@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\SecurityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -37,14 +38,9 @@ class AuthController extends Controller
             return back()->withErrors(['username' => 'Account is disabled. Contact administrator.'])->withInput();
         }
 
-        $passwordOk = Hash::check($data['password'], $user->password);
-        if (!$passwordOk && hash_equals($data['password'], (string) $user->password)) {
-            $user->password = Hash::make($data['password']);
-            $user->save();
-            $passwordOk = true;
-        }
-
-        if (!$passwordOk) {
+        // NP-5: fallback password plaintext dihapus; semua users.password sudah
+        // di-hash (command users:hash-plaintext-passwords).
+        if (!Hash::check($data['password'], (string) $user->password)) {
             $this->writeSecurityLog('LOGIN_FAILED', $user->username, $ip, 'Invalid password');
             return back()->withErrors(['username' => 'Invalid username or password'])->withInput();
         }
@@ -73,20 +69,6 @@ class AuthController extends Controller
 
     private function writeSecurityLog(string $event, string $username, ?string $ip, string $message): void
     {
-        $logDir = storage_path('logs');
-        if (!is_dir($logDir)) {
-            @mkdir($logDir, 0755, true);
-        }
-
-        $line = sprintf(
-            "[%s] [%s] [%s] user=%s msg=%s",
-            date('Y-m-d H:i:s'),
-            $ip !== '' ? $ip : '-',
-            $event,
-            $username !== '' ? $username : '-',
-            $message
-        );
-
-        @file_put_contents($logDir . DIRECTORY_SEPARATOR . 'security.log', $line . PHP_EOL, FILE_APPEND);
+        SecurityLog::write($event, $username, $ip, $message);
     }
 }

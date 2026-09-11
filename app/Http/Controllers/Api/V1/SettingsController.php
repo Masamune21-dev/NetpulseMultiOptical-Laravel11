@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\Secret;
 use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,8 @@ class SettingsController extends Controller
         foreach ($rows as $row) {
             $data[$row->name] = $row->value;
         }
-        return response()->json(['success' => true, 'data' => $data]);
+        // NP-4: bot_token diredaksi (non-admin kosong, admin placeholder).
+        return response()->json(['success' => true, 'data' => Secret::redactSettings($data, $role === 'admin')]);
     }
 
     public function upsert(Request $request)
@@ -47,7 +49,7 @@ class SettingsController extends Controller
             return response()->json(['success' => false, 'error' => 'Settings table not found'], 500);
         }
 
-        $data = $request->json()->all();
+        $data = Secret::prepareSettingsForSave($request->json()->all());
         foreach ($data as $k => $v) {
             DB::statement(
                 "INSERT INTO settings (name, value)

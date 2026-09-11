@@ -4,12 +4,15 @@ namespace App\Auth;
 
 use App\Models\PersonalAccessToken;
 use Illuminate\Support\Str;
+use DateTimeInterface;
 
 trait HasApiTokens
 {
-    public function createToken(string $name = 'default'): NewAccessToken
+    public function createToken(string $name = 'default', ?DateTimeInterface $expiresAt = null): NewAccessToken
     {
         $plain = Str::random(40);
+        // NP-6: default 90 hari bila pemanggil tidak menentukan.
+        $expiresAt ??= now()->addDays(90);
 
         $token = new PersonalAccessToken();
         $token->forceFill([
@@ -18,6 +21,7 @@ trait HasApiTokens
             'name' => $name,
             'token' => hash('sha256', $plain),
             'abilities' => ['*'],
+            'expires_at' => $expiresAt,
         ]);
         $token->save();
 

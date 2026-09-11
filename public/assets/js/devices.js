@@ -115,7 +115,7 @@ function loadDevices() {
             const html = data.map(d => {
                 const snmpClass = d.snmp_version === '3' ? 'snmp-v3' : 'snmp-v2c';
                 const snmpLabel = d.snmp_version === '3' ? 'v3' : 'v2c';
-                const auth = d.snmp_version === '2c' ? (d.community || '-') : (d.snmp_user || '-');
+                const auth = d.snmp_version === '2c' ? (d.community_set ? '••••' : '-') : (d.snmp_user_set ? '••••' : '-');
 
                 let statusClass = 'status-inactive';
                 let statusLabel = 'Inactive';
@@ -198,8 +198,11 @@ function editDevice(d) {
     device_name.value = d.device_name;
     ip_address.value = d.ip_address;
     snmp_version.value = d.snmp_version;
-    community.value = d.community;
-    snmp_user.value = d.snmp_user;
+    // NP-4: rahasia tidak dikirim server; kosongkan = pertahankan nilai lama.
+    community.value = '';
+    community.placeholder = d.community_set ? '•••• (kosongkan = tidak diubah)' : 'public';
+    snmp_user.value = '';
+    snmp_user.placeholder = d.snmp_user_set ? '•••• (kosongkan = tidak diubah)' : 'snmpuser';
     is_active.value = d.is_active;
 }
 
@@ -355,7 +358,7 @@ async function discoverSelectedInterfaces(silent = false) {
         if (autoDiscoverBusy) return;
         autoDiscoverBusy = true;
 
-        const r = await fetch(`${api}?device_id=${id}&_=${Date.now()}`);
+        const r = await fetch(`${api}?device_id=${id}&_=${Date.now()}`, { method: 'POST' });
         const raw = await r.text();
 
         console.log(raw);

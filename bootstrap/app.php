@@ -12,28 +12,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // NP-6: CSRF hanya dikecualikan untuk API v1 (Bearer token, tanpa sesi).
+        // Rute web /api/* ber-sesi cookie tetap wajib X-CSRF-TOKEN (disuntik
+        // otomatis oleh pembungkus fetch/XHR di layouts/app.blade.php).
         $middleware->validateCsrfTokens(except: [
-            'logout',
-            'logout.php',
-            'dashboard',
-            'dashboard.php',
-            'monitoring',
-            'monitoring.php',
-            'devices',
-            'devices.php',
-            'map',
-            'map.php',
-            'users',
-            'users.php',
-            'settings',
-            'settings.php',
-            'olt',
-            'olt.php',
-            'api/settings.php',
-            'api/telegram_test.php',
-            'api/logs.php',
-            'api/*',
+            'api/v1/*',
         ]);
+
+        // NP-1: limiter `api` (120/menit per user/token/IP) untuk grup routes/api.php.
+        $middleware->throttleApi();
 
         $middleware->alias([
             'legacy.auth' => \App\Http\Middleware\EnsureAuthenticated::class,

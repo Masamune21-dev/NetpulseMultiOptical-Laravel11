@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Secret;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -30,7 +31,7 @@ class InterfaceDiscovery
         }
 
         $ip = $device->ip_address;
-        $community = $device->community;
+        $community = Secret::reveal($device->community); // NP-4: terenkripsi at-rest, fallback plaintext
         if (!$community) {
             return [
                 'success' => false,
@@ -765,7 +766,7 @@ class InterfaceDiscovery
             $val = $row->value;
 
             if ($name === 'bot_token') {
-                $settings['bot_token'] = trim((string) $val);
+                $settings['bot_token'] = trim(Secret::reveal((string) $val));
                 continue;
             }
             if ($name === 'chat_id') {
