@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\UserState;
 use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -85,6 +86,7 @@ class UsersApiController extends Controller
 
         $target->fill($update);
         $target->save();
+        UserState::forget((int) $target->id);
 
         return response()->json(['success' => true, 'message' => 'User updated successfully']);
     }
@@ -117,6 +119,7 @@ class UsersApiController extends Controller
         }
 
         User::query()->where('id', $id)->delete();
+        UserState::forget($id);
 
         return response()->json(['success' => true, 'message' => 'User deleted successfully']);
     }

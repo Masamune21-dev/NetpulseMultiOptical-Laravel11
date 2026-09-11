@@ -57,9 +57,10 @@ Route::get('/downloads/netpulse.apk', function () {
 });
 
 Route::get('/login', [AuthController::class, 'showLogin']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
-Route::get('/logout', [AuthController::class, 'logout']);
+// NP-6: logout hanya lewat POST + CSRF (form di layouts/app.blade.php).
+Route::post('/logout', [AuthController::class, 'logout']);
 
 Route::middleware(['legacy.auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
@@ -133,8 +134,9 @@ Route::middleware(['legacy.auth'])->group(function () {
     Route::any('/api/map_links', [MapApiController::class, 'links']);
     Route::get('/api/map_devices', [MapApiController::class, 'devices']);
 
-    Route::get('/api/discover_interfaces', DiscoverInterfacesController::class);
-    Route::get('/api/huawei_discover_optics', DiscoverInterfacesController::class);
+    // NP-6: discovery menulis DB → POST + CSRF (pemanggil: devices.js, map.js).
+    Route::post('/api/discover_interfaces', DiscoverInterfacesController::class);
+    Route::post('/api/huawei_discover_optics', DiscoverInterfacesController::class);
 
     Route::match(['GET', 'POST'], '/api/settings', [SettingsApiController::class, 'settings'])
         ->middleware('legacy.role:admin,technician,viewer');

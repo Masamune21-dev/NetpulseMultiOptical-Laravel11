@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Secret;
 use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,9 +24,22 @@ class DevicesApiController extends Controller
             return $this->testSnmp($testId);
         }
 
+        // NP-4: kredensial SNMP/telnet tidak pernah dikirim ke klien; hanya flag *_set.
         $devices = DB::table('snmp_devices')
+            ->select([
+                'id', 'device_name', 'ip_address', 'snmp_version', 'is_active', 'last_status',
+                'created_at', 'last_error', 'latitude', 'longitude', 'map_icon', 'map_color',
+                'last_monitor_status', 'last_monitor_time', 'map_locked', 'vendor',
+                DB::raw("(community IS NOT NULL AND community <> '') AS community_set"),
+                DB::raw("(snmp_user IS NOT NULL AND snmp_user <> '') AS snmp_user_set"),
+            ])
             ->orderByDesc('id')
-            ->get();
+            ->get()
+            ->map(function ($d) {
+                $d->community_set = (bool) $d->community_set;
+                $d->snmp_user_set = (bool) $d->snmp_user_set;
+                return $d;
+            });
 
         return response()->json($devices);
     }
@@ -42,12 +56,22 @@ class DevicesApiController extends Controller
             'device_name' => trim((string) ($data['device_name'] ?? '')),
             'ip_address' => trim((string) ($data['ip_address'] ?? '')),
             'snmp_version' => $data['snmp_version'] ?? '2c',
-            'community' => $data['community'] ?? null,
-            'snmp_user' => $data['snmp_user'] ?? null,
             'is_active' => (int) ($data['is_active'] ?? 1),
         ];
 
+        // NP-4: community dienkripsi at-rest; saat edit, kosong/placeholder = pakai nilai lama.
+        $community = trim((string) ($data['community'] ?? ''));
+        if ($community !== '' && $community !== Secret::PLACEHOLDER) {
+            $payload['community'] = Secret::encrypt($community);
+        }
+        $snmpUser = trim((string) ($data['snmp_user'] ?? ''));
+        if ($snmpUser !== '' && $snmpUser !== Secret::PLACEHOLDER) {
+            $payload['snmp_user'] = $snmpUser;
+        }
+
         if (empty($data['id'])) {
+            $payload['community'] = $payload['community'] ?? null;
+            $payload['snmp_user'] = $payload['snmp_user'] ?? null;
             DB::table('snmp_devices')->insert($payload);
         } else {
             DB::table('snmp_devices')
@@ -138,7 +162,7 @@ class DevicesApiController extends Controller
                 if (!function_exists('snmp2_get')) {
                     throw new \RuntimeException('SNMP extension not installed');
                 }
-                $response = @\snmp2_get($ip, (string) $device->community, $oid, $timeout, $retries);
+                $response = @\snmp2_get($ip, Secret::reveal($device->community), $oid, $timeout, $retries);
             } else {
                 if (!function_exists('snmp3_get')) {
                     throw new \RuntimeException('SNMP extension not installed');

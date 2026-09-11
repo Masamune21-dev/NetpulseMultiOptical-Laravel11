@@ -1365,3 +1365,14 @@ textarea::placeholder {
         padding: 0;
     }
 }
+
+/* NP-6: logout kini form POST + CSRF; form transparan agar tombol ikut layout flex induk */
+.logout-form {
+    display: contents;
+}
+
+.logout-form button {
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+}

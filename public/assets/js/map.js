@@ -1366,7 +1366,7 @@ async function testNodeSNMP(deviceId) {
 // Discover interfaces for node
 async function discoverNodeInterfaces(deviceId) {
     try {
-        const response = await fetch(`api/discover_interfaces?device_id=${deviceId}`);
+        const response = await fetch(`api/discover_interfaces?device_id=${deviceId}`, { method: 'POST' });
         const result = await response.json();
 
         if (result.success) {

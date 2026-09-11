@@ -18,7 +18,7 @@ Route::prefix('v1')->group(function () {
         return response()->json(['ok' => true, 'ts' => now()->toIso8601String()]);
     });
 
-    Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
     Route::middleware('api.auth')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);

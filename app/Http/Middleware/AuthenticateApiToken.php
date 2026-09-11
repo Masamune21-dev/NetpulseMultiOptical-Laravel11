@@ -31,6 +31,11 @@ class AuthenticateApiToken
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
+        // NP-6: akun yang dinonaktifkan admin tidak boleh terus memakai token lama.
+        if (isset($tokenable->is_active) && (int) $tokenable->is_active !== 1) {
+            return response()->json(['error' => 'Account is disabled'], 403);
+        }
+
         Auth::setUser($tokenable);
         $request->setUserResolver(fn () => $tokenable);
 

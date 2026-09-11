@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
+use App\Support\SecurityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -23,31 +24,30 @@ class AuthController extends Controller
             ->first();
 
         if (!$user) {
+            SecurityLog::write('API_LOGIN_FAILED', $data['username'], $request->ip(), 'User not found');
             return response()->json(['error' => 'Invalid username or password'], 401);
         }
 
         if ((int) ($user->is_active ?? 1) !== 1) {
+            SecurityLog::write('API_LOGIN_FAILED', $user->username, $request->ip(), 'Account disabled');
             return response()->json(['error' => 'Account is disabled'], 403);
         }
 
-        $passwordOk = Hash::check($data['password'], (string) $user->password);
-        if (!$passwordOk && hash_equals($data['password'], (string) $user->password)) {
-            // Backward-compat: accept legacy plaintext and re-hash.
-            $user->password = Hash::make($data['password']);
-            $user->save();
-            $passwordOk = true;
-        }
-
-        if (!$passwordOk) {
+        // NP-5: fallback password plaintext dihapus (lihat users:hash-plaintext-passwords).
+        if (!Hash::check($data['password'], (string) $user->password)) {
+            SecurityLog::write('API_LOGIN_FAILED', $user->username, $request->ip(), 'Invalid password');
             return response()->json(['error' => 'Invalid username or password'], 401);
         }
 
         $tokenName = $data['device_name'] ?? 'android';
-        $newToken = $user->createToken($tokenName);
+        // NP-6: token kedaluwarsa 90 hari (ditolak oleh AuthenticateApiToken).
+        $newToken = $user->createToken($tokenName, now()->addDays(90));
+        SecurityLog::write('API_LOGIN_SUCCESS', $user->username, $request->ip(), 'token=' . $tokenName);
 
         return response()->json([
             'token_type' => 'Bearer',
             'access_token' => $newToken->plainTextToken,
+            'expires_at' => $newToken->accessToken->expires_at?->toIso8601String(),
             'user' => [
                 'id' => $user->id,
                 'username' => $user->username,

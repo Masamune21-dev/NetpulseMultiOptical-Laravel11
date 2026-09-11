@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\FcmService;
+use App\Support\Secret;
 use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,14 +32,14 @@ class SettingsApiController extends Controller
             foreach ($rows as $row) {
                 $data[$row->name] = $row->value;
             }
-            return response()->json($data);
+            return response()->json(Secret::redactSettings($data, $role === 'admin'));
         }
 
         if ($role !== 'admin') {
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
-        $data = $request->json()->all();
+        $data = Secret::prepareSettingsForSave($request->json()->all());
         foreach ($data as $k => $v) {
             DB::statement(
                 "INSERT INTO settings (name, value)
@@ -69,7 +70,7 @@ class SettingsApiController extends Controller
 
         foreach ($rows as $row) {
             if ($row->name === 'bot_token') {
-                $settings['bot_token'] = trim((string) $row->value);
+                $settings['bot_token'] = trim(Secret::reveal((string) $row->value));
             }
             if ($row->name === 'chat_id') {
                 $settings['chat_id'] = trim((string) $row->value);
