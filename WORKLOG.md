@@ -4,6 +4,16 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-12 — Dokumentasi: Bagian Keamanan di NETPULSE_DOCUMENTATION.md
+
+- **Created — bagian `## Keamanan`** (disisipkan setelah Role Matrix): seluruh pengerasan 10 Sep (NP-1, NP-4, NP-5, NP-6) sebelumnya hanya tercatat di WORKLOG, padahal ia **keadaan yang berlaku** dan sebagian besar mudah dirusak tanpa sengaja saat menambah fitur.
+- **Notes — ditulis sebagai aturan kerja, bukan riwayat**. Yang ditekankan: (1) hanya `api/v1/*` yang dikecualikan dari CSRF, rute web `/api/*` wajib `X-CSRF-TOKEN`; (2) **endpoint yang menulis DB tidak boleh `GET`** — `discover_interfaces` & `huawei_discover_optics` sudah dipindah ke POST karena itu; (3) rahasia **selalu** dibaca lewat `Secret::reveal()`, jangan langsung dari kolom; (4) form yang dikosongkan berarti "pertahankan nilai lama"; (5) `route:cache` + `config:cache` wajib diperbarui setelah mengubah rute/config karena produksi memakainya.
+- **Notes — satu konsekuensi yang belum pernah ditulis di mana pun**: `UserState` mem-cache role & `is_active` selama 60 detik, jadi **akun yang dinonaktifkan kehilangan sesinya dalam ≤60 detik** tanpa perlu menunggu logout. Itu perilaku yang perlu diketahui admin, bukan detail implementasi.
+- **Notes — utang test dicatat terang-terangan**: `phpunit.xml` belum diarahkan ke sqlite, sehingga menjalankan test di server ini berisiko menyasar DB produksi — itu sebabnya verifikasi pengerasan dilakukan manual lewat curl. Ditulis berikut arah perbaikannya (pola `scripts/test.sh` di keempat app Laravel lain), supaya tidak terlupa.
+- **Notes — tidak ada perubahan kode**, murni penyelarasan dokumentasi.
+
+---
+
 ## 2026-09-10 — Perbaikan Temuan Audit Keamanan (NP-1, NP-4, NP-5, NP-6, deps)
 1. **Fixed — NP-6 CSRF & metode aman**: `bootstrap/app.php` pengecualian CSRF kini hanya `api/v1/*` (Bearer, tanpa sesi); rute web `/api/*` ber-sesi wajib `X-CSRF-TOKEN`. `layouts/app.blade.php` menambah `<meta name="csrf-token">` + pembungkus global `fetch`/`XMLHttpRequest` yang menyuntik header untuk request same-origin non-GET (semua JS lama di `public/assets/js/*.js` otomatis tercakup). Logout diubah dari `GET /logout` menjadi form `POST /logout` + `@csrf` (sidebar & mobile header; CSS `.logout-form { display: contents }`). `GET /api/discover_interfaces` & `huawei_discover_optics` (menulis DB) menjadi `POST` — pemanggil `devices.js` & `map.js` disesuaikan; `DiscoverInterfacesController` membaca `device_id` via `input()`.
 2. **Fixed — NP-1 throttle login**: limiter `login` 5/menit per `strtolower(username)|ip` (`AppServiceProvider::configureRateLimiting`) dipasang di `POST /login` dan `POST /api/v1/auth/login`; limiter `api` 120/menit per user/token/IP via `$middleware->throttleApi()` untuk grup `routes/api.php`. Kegagalan & pembatasan dicatat ke `storage/logs/security.log` lewat `app/Support/SecurityLog.php` (event `LOGIN_THROTTLED`, `API_LOGIN_FAILED`, `API_LOGIN_SUCCESS`; `AuthController::writeSecurityLog` kini delegasi ke kelas yang sama). Verifikasi: 6× POST `/api/v1/auth/login` salah → ke-6 = 429.
