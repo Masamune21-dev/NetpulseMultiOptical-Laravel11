@@ -86,6 +86,95 @@ Content-Type: application/json
 
 Catatan: beberapa tombol create/edit/delete juga disembunyikan dari UI memakai `body[data-role]`, tetapi pembatasan utama tetap di controller/middleware.
 
+## Keamanan
+
+Keadaan setelah pengerasan **10 September 2026**. Bagian ini menjelaskan mekanisme yang
+mudah dirusak tanpa sengaja saat menambah fitur.
+
+### CSRF — dua kelompok rute yang perlakuannya berbeda
+
+| Kelompok | Autentikasi | CSRF |
+|---|---|---|
+| `api/v1/*` | Bearer token, **tanpa sesi** | Dikecualikan |
+| `/api/*` (web) | Sesi | **Wajib** `X-CSRF-TOKEN` |
+
+Pengecualian CSRF di `bootstrap/app.php` **hanya** `api/v1/*`. Rute web `/api/*` ber-sesi
+wajib mengirim header, dan itu ditangani otomatis oleh pembungkus global `fetch` /
+`XMLHttpRequest` di `layouts/app.blade.php` (menyuntik header untuk request same-origin
+non-GET), sehingga seluruh JS lama di `public/assets/js/*.js` ikut tercakup tanpa diubah.
+
+Dua konsekuensi yang mudah terlewat saat menambah endpoint:
+
+- **Endpoint yang menulis DB tidak boleh `GET`.** `discover_interfaces` dan
+  `huawei_discover_optics` sudah dipindahkan ke `POST` karena keduanya menulis.
+- **Logout adalah `POST`**, bukan `GET` — sebuah form ber-`@csrf`. `GET /logout` sekarang
+  membalas 405.
+
+### Pembatasan laju
+
+| Limiter | Batas | Dipasang di |
+|---|---|---|
+| `login` | 5/menit per `username\|ip` | `POST /login`, `POST /api/v1/auth/login` |
+| `api` | 120/menit per user/token/IP | Seluruh grup `routes/api.php` |
+
+Kegagalan dan pembatasan dicatat ke `storage/logs/security.log` lewat
+[`app/Support/SecurityLog.php`](../app/Support/SecurityLog.php) — event `LOGIN_THROTTLED`,
+`API_LOGIN_FAILED`, `API_LOGIN_SUCCESS`.
+
+### Rahasia at-rest
+
+[`app/Support/Secret.php`](../app/Support/Secret.php) mengenkripsi `snmp_devices.community`
+dan `settings.bot_token` memakai `Crypt`. Sifatnya idempoten, dan `reveal()` punya fallback
+plaintext sehingga baris lama yang belum sempat terenkripsi tetap terbaca.
+
+Pembacanya: `InterfaceDiscovery` (poller & Telegram), `DevicesApiController::testSnmp`, dan
+`telegramTest`. **Selalu lewat `Secret::reveal()`** — jangan membaca kolomnya langsung.
+
+Di sisi keluaran:
+
+- `GET /api/devices` memakai `select` eksplisit **tanpa** `community`, `snmp_user`, maupun
+  `telnet_*`; yang dikirim hanya flag `community_set` / `snmp_user_set`. UI menampilkan `••••`.
+- `bot_token` diredaksi lewat `Secret::redactSettings()` — non-admin menerima `''`, admin
+  menerima placeholder `••••` plus flag `bot_token_set`.
+- **Form yang dikosongkan berarti "pertahankan nilai lama".** Saat menyimpan, placeholder
+  diabaikan oleh `Secret::prepareSettingsForSave()`; nilai baru dienkripsi.
+
+### Password & token
+
+- Fallback `hash_equals($input, $user->password)` **sudah dihapus** dari kedua
+  `AuthController`. Tidak ada lagi jalur yang menerima password plaintext.
+- Perintah `users:hash-plaintext-passwords` (punya `--dry-run`) tersedia untuk berjaga; saat
+  dijalankan di produksi hasilnya **0 dari 5** baris — semuanya sudah bcrypt.
+- Token API punya `expires_at`, **default 90 hari**. Respons login v1 menyertakannya.
+- `AuthenticateApiToken` menolak akun `is_active=0`.
+- [`app/Support/UserState.php`](../app/Support/UserState.php) memuat ulang `role` dan
+  `is_active` dari DB (cache 60 detik), dipakai `EnsureAuthenticated` dan `EnsureRole`.
+  Artinya **akun yang dinonaktifkan kehilangan sesinya dalam ≤60 detik**, tidak perlu
+  menunggu logout. `UsersApiController` mem-flush cache itu saat user diubah atau dihapus.
+
+### Konfigurasi & berkas
+
+- `SESSION_SECURE_COOKIE=true` — cookie sesi ber-flag `Secure`.
+- `storage/app/firebase/service-account.json` dan `storage/logs/*.log` ber-mode **0640**.
+- Produksi memakai `route:cache` + `config:cache`; **keduanya wajib diperbarui setelah
+  mengubah rute atau config**, kalau tidak perubahan tidak akan berlaku.
+
+### Catatan tentang test
+
+`phpunit.xml` **tidak** diarahkan ke sqlite, sehingga menjalankan test di server ini
+berisiko menyasar database produksi. Verifikasi pengerasan di atas dilakukan manual lewat
+`curl`. Kalau suatu saat test suite dihidupkan, hal pertama yang harus dibereskan adalah
+mengarahkannya ke sqlite in-memory — pola yang sudah dipakai `scripts/test.sh` di Billing,
+NMS, MikroTik, dan IdP.
+
+### Dependensi
+
+`composer audit` turun dari **42 → 3** advisori. Sisanya seluruhnya `laravel/framework` yang
+hanya diperbaiki di 12.x, dan keduanya tidak menyentuh aplikasi ini (rule `email` hanya di
+validasi internal; `signedRoute`/`temporarySignedRoute` tidak dipakai). Karena Composer 2.9
+memblokir seluruh 11.x akibat advisori itu, `composer.json` memasang
+`config.audit.block-insecure=false` — **wajib** agar pembaruan dalam `^11` bisa berjalan.
+
 ## UI Web
 
 ### Layout Utama
