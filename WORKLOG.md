@@ -4,6 +4,33 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-17 — Created: Endpoint `/healthz` untuk Monitoring Uptime
+
+- **Created — `routes/web.php`: `GET /healthz`** (tanpa auth, bernama `healthz`). Membalas
+  `{status, app, database, timestamp}` dengan HTTP **200/503**, bentuk yang sama dengan
+  `/healthz` milik SSO, NMS, MikroTik, dan Billing supaya satu pemeriksa kata kunci
+  (`"status":"ok"`) berlaku untuk seluruh ekosistem. Disiapkan untuk Uptime Kuma yang akan
+  dipasang di `uptime.kusumavision.net`.
+- **Notes — hanya MariaDB yang diperiksa, Redis sengaja tidak.** App ini satu-satunya di
+  ekosistem yang tidak memakai Redis sama sekali (`QUEUE_CONNECTION=sync`, `CACHE_STORE=file`,
+  `SESSION_DRIVER=file`), jadi melaporkan status Redis di sini hanya akan menciptakan sinyal
+  palsu. Pemeriksaannya `getPdo()` **plus** `select 1` — membuka koneksi saja belum membuktikan
+  server menjawab kueri.
+- **Notes — kenapa `/api/v1/ping` yang sudah ada tidak dipakai.** `routes/api.php:17` membalas
+  `{ok:true, ts}` **tanpa menyentuh database sama sekali**, jadi ia tetap hijau saat MariaDB
+  mati — persis kondisi yang paling perlu terdeteksi. Ia tetap dibiarkan untuk aplikasi mobile.
+- **Changed — `use Illuminate\Support\Facades\DB;`** ditambahkan ke daftar impor, mengikuti
+  pola `KusumaVisionSSO/routes/web.php:17`. `config/app.php` app ini tidak punya blok `aliases`,
+  jadi memakai `DB::` tanpa impor bertumpu pada alias bawaan framework — eksplisit lebih aman.
+- **Notes — `php artisan route:cache` WAJIB dijalankan ulang.** `bootstrap/cache/routes-v7.php`
+  aktif di produksi; tanpa menyegarkannya rute baru membalas **404**. Berkas cache lama ternyata
+  milik `root:root` (jejak artisan yang pernah dijalankan sebagai root); sesudah disegarkan
+  sebagai `www-data` kepemilikannya kembali benar.
+- **Notes — verifikasi**: `curl https://netpulse.kusumavision.net/healthz` → **HTTP 200 dalam
+  0,82 detik**, `{"status":"ok","database":true,"timestamp":"2026-09-17T17:52:48+07:00"}`.
+  Timestamp ber-offset `+07:00` sesuai `DB_TIMEZONE`, jadi tidak perlu diterjemahkan lagi oleh
+  pembacanya.
+
 ## 2026-09-12 — Dokumentasi: Bagian Keamanan di NETPULSE_DOCUMENTATION.md
 
 - **Created — bagian `## Keamanan`** (disisipkan setelah Role Matrix): seluruh pengerasan 10 Sep (NP-1, NP-4, NP-5, NP-6) sebelumnya hanya tercatat di WORKLOG, padahal ia **keadaan yang berlaku** dan sebagian besar mudah dirusak tanpa sengaja saat menambah fitur.
