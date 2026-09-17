@@ -21,11 +21,41 @@ use App\Http\Controllers\UsersController;
 use App\Http\Controllers\AlertLogsApiController;
 use App\Http\Controllers\AlertMutesController;
 use App\Http\Controllers\SlaController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return redirect()->to('/login');
 });
+
+/*
+ * Health check tanpa auth, dipakai monitoring uptime.
+ *
+ * Bentuk balasannya sengaja disamakan dengan /healthz milik SSO, NMS, MikroTik, dan
+ * Billing supaya satu pemeriksa kata kunci ("status":"ok") berlaku untuk semua app.
+ * Bedanya: app ini tidak memakai Redis sama sekali (QUEUE=sync, CACHE=file,
+ * SESSION=file), jadi hanya MariaDB yang diperiksa — melaporkan redis di sini hanya
+ * akan menciptakan sinyal palsu.
+ *
+ * /api/v1/ping yang sudah ada TIDAK bisa menggantikan ini: ia membalas {ok:true}
+ * tanpa menyentuh database sama sekali, jadi ia tetap hijau saat MariaDB mati.
+ */
+Route::get('/healthz', function () {
+    $dbOk = false;
+    try {
+        DB::connection()->getPdo();
+        DB::select('select 1');
+        $dbOk = true;
+    } catch (Throwable) {
+    }
+
+    return response()->json([
+        'status' => $dbOk ? 'ok' : 'degraded',
+        'app' => config('app.name'),
+        'database' => $dbOk,
+        'timestamp' => now()->toIso8601String(),
+    ], $dbOk ? 200 : 503);
+})->name('healthz');
 
 // Endpoint unduh APK kanonis — dynamic no-cache, file tersimpan di HP selalu netpulse.apk
 Route::get('/download/app', function () {
