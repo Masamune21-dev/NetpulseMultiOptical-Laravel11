@@ -1,3 +1,5 @@
+import '../../theme/status.dart';
+
 class InterfaceRow {
   InterfaceRow({
     required this.id,
@@ -16,6 +18,7 @@ class InterfaceRow {
     required this.outRateBps,
     required this.lastSeen,
     required this.interfaceType,
+    this.history24h = '',
   });
 
   final int id;
@@ -34,6 +37,9 @@ class InterfaceRow {
   final int? outRateBps;
   final String? lastSeen;
   final String? interfaceType;
+
+  /// Riwayat status 24 jam dari server (huruf u/w/d/n, terlama di kiri).
+  final String history24h;
 
   bool get isUp => operStatus == 1;
 
@@ -64,6 +70,7 @@ class InterfaceRow {
       outRateBps: asInt(json['out_rate_bps']),
       lastSeen: asStr(json['last_seen']),
       interfaceType: asStr(json['interface_type']),
+      history24h: asStr(json['history_24h']) ?? '',
     );
   }
 }
@@ -74,6 +81,7 @@ class InterfaceListMeta {
     required this.page,
     required this.perPage,
     required this.lastPage,
+    this.thresholds = RxThresholds.defaults,
   });
 
   final int total;
@@ -81,12 +89,16 @@ class InterfaceListMeta {
   final int perPage;
   final int lastPage;
 
+  /// Ambang RX global dari server — diadopsi sebagai [RxThresholds.current].
+  final RxThresholds thresholds;
+
   factory InterfaceListMeta.fromJson(Map<String, dynamic> json) {
     return InterfaceListMeta(
       total: (json['total'] as num?)?.toInt() ?? 0,
       page: (json['page'] as num?)?.toInt() ?? 1,
       perPage: (json['per_page'] as num?)?.toInt() ?? 25,
       lastPage: (json['last_page'] as num?)?.toInt() ?? 1,
+      thresholds: RxThresholds.fromJson((json['thresholds'] as Map?)?.cast<String, dynamic>()).adopt(),
     );
   }
 }

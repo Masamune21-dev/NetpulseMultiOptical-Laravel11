@@ -4,6 +4,8 @@ import '../../api/api_client.dart';
 import '../../auth/session_store.dart';
 import '../../features/alerts/alert_models.dart';
 import '../../features/alerts/alerts_service.dart';
+import '../../theme/tokens.dart';
+import '../../theme/status.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -176,11 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _alertTile(AlertLogItem a) {
     final sev = a.severity.toLowerCase();
-    final color = switch (sev) {
-      'critical' => Colors.redAccent,
-      'warning' => Colors.orange,
-      _ => Colors.blueGrey,
-    };
+    final color = context.np.severity(sev).mark;
 
     final subtitleBits = <String>[
       if (a.deviceName != null && a.deviceName!.isNotEmpty) a.deviceName!,

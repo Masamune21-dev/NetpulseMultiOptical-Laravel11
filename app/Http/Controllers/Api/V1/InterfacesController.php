@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\RxThresholds;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -35,6 +36,8 @@ class InterfacesController extends Controller
         $deviceId = (int) $request->query('device_id', 0);
         $status = strtolower(trim((string) $request->query('status', 'all')));
         $q = trim((string) $request->query('q', ''));
+        $sort = strtolower(trim((string) $request->query('sort', 'device')));
+        $thresholds = RxThresholds::global();
 
         $base = DB::table('interfaces')
             ->leftJoin('snmp_devices', 'interfaces.device_id', '=', 'snmp_devices.id')
@@ -51,6 +54,12 @@ class InterfacesController extends Controller
                 $sub->whereNull('interfaces.oper_status')
                     ->orWhere('interfaces.oper_status', '!=', 1);
             });
+        } elseif ($status === 'warn') {
+            // Marjinal: port masih up tetapi RX di bawah ambang peringatan.
+            $base->where('interfaces.oper_status', 1)
+                ->whereNotNull('interfaces.rx_power')
+                ->where('interfaces.rx_power', '<', $thresholds['rx_warn_low'])
+                ->where('interfaces.rx_power', '>', $thresholds['rx_down_threshold']);
         }
 
         if ($q !== '') {
@@ -89,13 +98,25 @@ class InterfacesController extends Controller
                 'interfaces.last_seen',
                 'interfaces.interface_type',
             ])
+            // sort=rx: port hidup dengan RX terlemah di atas; port down / tanpa
+            // DDM (−40 = tanpa pembacaan) ke bawah supaya yang marjinal tampak.
+            ->when($sort === 'rx', fn ($qq) => $qq
+                ->orderByRaw('(interfaces.oper_status IS NULL OR interfaces.oper_status <> 1)')
+                ->orderByRaw('(interfaces.rx_power IS NULL OR interfaces.rx_power <= ?)', [$thresholds['rx_down_threshold']])
+                ->orderBy('interfaces.rx_power'))
             ->orderBy('snmp_devices.device_name')
             ->orderBy('interfaces.if_index')
             ->offset($offset)
             ->limit($perPage)
             ->get();
 
+        $history = RxThresholds::history24h(
+            $rows->map(fn ($r) => [(int) $r->device_id, (int) $r->if_index])->all(),
+            $thresholds,
+        );
+
         $data = $rows->map(fn ($r) => [
+            'history_24h' => $history[((int) $r->device_id) . ':' . ((int) $r->if_index)] ?? str_repeat('n', 24),
             'id' => (int) $r->id,
             'device_id' => (int) $r->device_id,
             'device_name' => $r->device_name !== null ? (string) $r->device_name : null,
@@ -122,6 +143,7 @@ class InterfacesController extends Controller
                 'page' => $page,
                 'per_page' => $perPage,
                 'last_page' => $lastPage,
+                'thresholds' => $thresholds,
             ],
         ]);
     }

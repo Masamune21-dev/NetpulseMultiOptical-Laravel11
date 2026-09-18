@@ -6,6 +6,7 @@ import '../../auth/session_store.dart';
 import '../../features/interfaces/interfaces_models.dart';
 import '../../features/interfaces/interfaces_service.dart';
 import '../../theme/theme_helper.dart';
+import '../../theme/tokens.dart';
 
 class InterfaceTrafficScreen extends StatefulWidget {
   const InterfaceTrafficScreen({
@@ -113,7 +114,7 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
 
   Widget _headerCard(InterfaceMeta? meta) {
     final isUp = meta?.isUp ?? false;
-    final statusColor = isUp ? const Color(0xFF16A34A) : const Color(0xFFDC2626);
+    final statusColor = isUp ? context.np.ok : context.np.bad;
     final speed = meta?.ifSpeed != null ? _formatBps(meta!.ifSpeed, decimals: 0) : '—';
     final alias = meta?.ifAlias ?? '';
     final device = meta?.deviceName ?? '';
@@ -134,7 +135,7 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
               Expanded(
                 child: Row(
                   children: [
-                    const Icon(Icons.circle_outlined, size: 16, color: Color(0xFF6366F1)),
+                    Icon(Icons.circle_outlined, size: 16, color: context.np.accent),
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
@@ -161,7 +162,7 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
                           color: context.textMuted,
-                          fontFamily: 'monospace',
+                          fontFamily: NpFont.mono,
                         ),
                       ),
                     ),
@@ -225,12 +226,12 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
           labelStyle: TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: 12,
-            color: selected ? Colors.white : context.textMuted,
+            color: selected ? context.np.onAccent : context.textMuted,
           ),
-          selectedColor: const Color(0xFF6366F1),
+          selectedColor: context.np.accent,
           backgroundColor: context.cardBg,
           side: BorderSide(
-            color: selected ? const Color(0xFF6366F1) : context.cardBorder,
+            color: selected ? context.np.accent : context.cardBorder,
           ),
           visualDensity: VisualDensity.compact,
         ),
@@ -265,7 +266,7 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
                       child: Text(
                         _error!,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.redAccent),
+                        style: TextStyle(color: context.np.badText),
                       ),
                     ),
                   )
@@ -361,37 +362,36 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
       lineBarsData: [
         LineChartBarData(
           spots: inSpots,
-          color: const Color(0xFF16A34A),
+          color: context.np.accent,
           barWidth: 1.6,
           isCurved: true,
           curveSmoothness: 0.25,
           dotData: const FlDotData(show: false),
           belowBarData: BarAreaData(
             show: true,
-            color: const Color(0xFF16A34A).withValues(alpha: 0.18),
+            color: context.np.accent.withValues(alpha: 0.18),
           ),
         ),
         LineChartBarData(
           spots: outSpots,
-          color: const Color(0xFF2563EB),
+          color: context.np.info,
           barWidth: 1.6,
           isCurved: true,
           curveSmoothness: 0.25,
           dotData: const FlDotData(show: false),
           belowBarData: BarAreaData(
             show: true,
-            color: const Color(0xFF2563EB).withValues(alpha: 0.18),
+            color: context.np.info.withValues(alpha: 0.18),
           ),
         ),
       ],
       lineTouchData: LineTouchData(
         touchTooltipData: LineTouchTooltipData(
-          getTooltipColor: (_) => Colors.black87,
+          getTooltipColor: (_) => context.np.ink,
           getTooltipItems: (spots) => spots.map((s) {
-            final color = s.bar.color ?? Colors.white;
             return LineTooltipItem(
-              '${color == const Color(0xFF16A34A) ? 'In' : 'Out'}: ${_formatMbps(s.y)}',
-              TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 11),
+              '${s.barIndex == 0 ? 'In' : 'Out'}: ${_formatMbps(s.y)}',
+              TextStyle(color: context.np.bg, fontWeight: FontWeight.w700, fontSize: 11),
             );
           }).toList(),
         ),
@@ -438,7 +438,7 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
           _summaryRow(
             icon: Icons.arrow_downward,
             label: 'In',
-            color: const Color(0xFF16A34A),
+            color: context.np.accent,
             cur: s?.inCur,
             avg: s?.inAvg,
             max: s?.inMax,
@@ -450,7 +450,7 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
           _summaryRow(
             icon: Icons.arrow_upward,
             label: 'Out',
-            color: const Color(0xFF2563EB),
+            color: context.np.info,
             cur: s?.outCur,
             avg: s?.outAvg,
             max: s?.outMax,
@@ -475,10 +475,10 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
           children: [
             Text(
               key,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF94A3B8),
+                color: context.np.ink3,
               ),
             ),
             const SizedBox(height: 2),
@@ -488,7 +488,7 @@ class _InterfaceTrafficScreenState extends State<InterfaceTrafficScreen> {
                 fontSize: 12.5,
                 fontWeight: FontWeight.w800,
                 color: color,
-                fontFamily: 'monospace',
+                fontFamily: NpFont.mono,
               ),
               overflow: TextOverflow.ellipsis,
             ),

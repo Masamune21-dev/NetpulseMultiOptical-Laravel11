@@ -4,6 +4,141 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-18 — Fixed: Beranda kosong di 2.1.0, kartu dempet, APK 56 MB → rilis 2.1.1+7 split-per-abi
+
+Umpan balik user dari HP setelah memasang 2.1.0+6: Beranda hanya menampilkan hero dan dua ubin
+KPI (kadang kosong sama sekali), kartu di Monitoring/Akun/Alert saling menempel, dan APK 56 MB
+padahal Billing/NMS ±20 MB.
+
+- **Fixed — `home_screen.dart` (`_KpiGrid`)**: dua `Row(crossAxisAlignment: stretch)` berada di
+  dalam `ListView` yang tingginya tak terbatas, sehingga `stretch` memaksa tinggi tak hingga →
+  layout gagal dan **seluruh sisa halaman tidak digambar** (di rilis tidak ada tanda error,
+  hanya kosong). Kedua baris dibungkus `IntrinsicHeight`.
+- **Fixed — `app_theme.dart` (`cardTheme.margin`)**: saya menolkan margin kartu saat membangun
+  tema baru, padahal layar lama menumpuk `Card` tanpa `SizedBox` dan mengandalkan margin tema.
+  Kini `EdgeInsets.only(bottom: 12)`; jarak samping tetap dari padding ListView (16).
+- **Changed — `account_screen.dart`**: teks "Versi saat ini" yang dulu hardcode `v2.0.3 (Build 5)`
+  kini dibaca dari `PackageInfo` (versi + build number aktual).
+- **Changed — `bin/build-apk.sh`**: `flutter build apk --release --split-per-abi
+  --target-platform android-arm,android-arm64`, pola yang sama dengan Billing/NMS. APK universal
+  lama membawa `lib/x86_64` (18,9 MB), `lib/arm64-v8a` (17,5 MB), dan `lib/armeabi-v7a` (15,2 MB)
+  sekaligus — x86_64 tidak dipakai HP mana pun. Hasil: `netpulse.apk` (arm64) **20,8 MB** dan
+  `netpulse-arm32.apk` **18,4 MB** untuk HP 32-bit lama. Skrip menghapus APK lama, menyalin
+  keduanya, dan `chown www-data`.
+- **Notes — versionCode**: `--split-per-abi` menambahkan offset ABI ke versionCode (arm32 =
+  1000+N, arm64 = 2000+N). `pubspec` 2.1.1+7 → arm64 terpasang sebagai versionCode **2007**;
+  ini normal (Billing sama) dan tetap dianggap pembaruan dari 6.
+- **Notes — verifikasi**: `flutter analyze` bersih; `/download/app`, `/downloads/netpulse.apk`,
+  dan `/downloads/netpulse-arm32.apk` menjawab HTTP 200. Uji visual di HP menunggu user.
+
+---
+
+## 2026-09-18 — Fixed: Perangkat down tetap tampil "online" di web & peta sampai Test SNMP manual
+
+- **Gejala** (laporan user): Telegram dan APK sudah menerima "DEVICE DOWN", tetapi halaman
+  Devices dan Map di web masih menampilkan perangkat online; status baru berubah setelah tombol
+  **Test SNMP** ditekan pada perangkat itu.
+- **Akar masalah**: poller `poll:interfaces` (`InterfaceDiscovery::discover`) hanya mengirim
+  alert dan menyimpan `storage/app/alert_state/<id>.json`; ia **tidak pernah menulis**
+  `snmp_devices.last_status`. Satu-satunya penulis kolom itu adalah
+  `DevicesApiController::testSnmp()`. Padahal `public/assets/js/devices.js:122-125`,
+  `MapApiController`, dan `Api/V1/MapController` (peta di APK) semuanya membaca `last_status`.
+  Kolom `last_monitor_status`/`last_monitor_time` bahkan tidak pernah diisi (semua `unknown`/NULL).
+- **Fixed — `app/Services/InterfaceDiscovery.php`**: helper baru `markDeviceStatus(id, up, error)`
+  menulis `last_status` (OK/FAILED), `last_error`, `last_monitor_status` (up/down), dan
+  `last_monitor_time` = now(). Dipanggil di tiga titik: ifIndex gagal → FAILED; ifName gagal →
+  FAILED; keduanya terbaca → OK. Berlaku untuk jalur CLI (cron) maupun tombol Discover di web.
+  Gagal tulis hanya dicatat ke log, tidak menghentikan polling.
+- **Notes — verifikasi**: `poll:interfaces --device=23` sebagai `www-data` → `OK / up /
+  15:26:55`. Jalur down diuji dengan baris perangkat sementara `ZZ-UJI-DOWN-SEMENTARA`
+  (IP 192.0.2.1, `is_active=0`) → `FAILED / down / "SNMP tidak menjawab (IF-MIB ifIndex) saat
+  polling"`, tanpa alert terkirim (state sebelumnya tidak dikenal), lalu baris dan berkas
+  state-nya dihapus. Siklus cron berikutnya mengisi `last_monitor_time` untuk seluruh perangkat
+  aktif.
+- **Notes**: alert transisi down/up tetap bertumpu pada berkas state per perangkat; yang
+  berubah hanya tabel kini ikut mencerminkannya, sehingga Dashboard web/mobile (hitungan
+  `last_status='FAILED'`), Devices, dan kedua peta akurat tanpa campur tangan manual.
+
+---
+
+## 2026-09-18 — Changed: Desain ulang Netpulse Mobile v2.1.0+6 (token seragam, widget bersama, riwayat 24 jam)
+
+Latar: audit 4 aplikasi mobile ekosistem menemukan Netpulse satu-satunya tanpa lapisan
+sistem desain — 32 varian padding, 11 nilai radius, 98 pemakaian warna hardcode (28 warna
+unik, lima hijau dan empat merah untuk arti yang sama), dan **ambang RX yang berbeda antar
+layar** (beranda −25, monitoring −35, peta/interface −40). Arah yang disepakati user:
+permukaan slate netral gaya Ubiquiti, teal sebagai satu-satunya aksen, status hanya lewat
+badge + kata. Mockup HTML disetujui sebelum kode disentuh.
+
+- **Created — `mobile/lib/src/theme/tokens.dart`**: `Np` (ThemeExtension) dengan palet terang
+  & gelap (bg/surface/surface2/border, ink×3, accent, ok/warn/bad/info masing-masing
+  `mark`/`text`/`bg`, track, shadow), `NpRadius` (pill/12/16/24), `NpSpace` (skala 4 pt:
+  4·8·12·16·20·24), `NpFont` (Sora/Inter/JetBrainsMono), `NpText.mono()`, `NpMotion`.
+  Diakses lewat `context.np`.
+- **Created — `mobile/lib/src/theme/status.dart`**: `NetStatus {up, warn, down, none}` dengan
+  label Indonesia (Up/Marjinal/Down/Tanpa DDM), `RxThresholds` (dari JSON server, `adopt()`
+  menyimpan sebagai `RxThresholds.current`), `statusOf(rx, operStatus)` — **satu aturan** untuk
+  semua layar: oper≠1 → down; rx null → tanpa DDM; rx ≤ ambang down → down; rx < ambang
+  peringatan → marjinal. Ekstensi `Np.status()` dan `Np.severity()` untuk warna.
+- **Changed — `mobile/lib/src/theme/app_theme.dart`** dibangun ulang dari token: ColorScheme,
+  skala tipe 7 langkah (KPI Sora 24/800 · judul layar 18/700 · judul kartu 14/700 · nama baris
+  Inter 13.5/600 · keterangan 12/500 · badge 11/700 · mono 14/600), tema AppBar/Card/Chip/
+  Segmented/NavigationBar/Input/Sheet/Dialog/Switch/Snackbar dari satu sumber. Nama fungsi
+  `buildNetpulseTheme()`/`buildNetpulseDarkTheme()` dipertahankan.
+- **Changed — `theme_helper.dart`** kini hanya pemetaan ke token (`cardBg→surface`,
+  `textMuted→ink2`, dst.) supaya layar yang belum ditulis ulang ikut palet yang sama.
+- **Changed — `pubspec.yaml`**: font Sora/Inter/JetBrainsMono dibundel dari `assets/fonts/`
+  (disalin dari NMS mobile); dependensi `google_fonts` **dilepas** — sebelumnya font diunduh
+  saat aplikasi dibuka, tampilan pertama bisa memakai fallback saat sinyal buruk. Versi
+  dinaikkan ke **2.1.0+6**.
+- **Created — `mobile/lib/src/ui/widgets/`**: `SectionCard` (+`RowDivider`), `StatTile`,
+  `StatusBadge` (+`StatusDot`, konstruktor `.severity`), `HeartbeatBar` (bar riwayat per jam
+  ala Uptime Kuma, huruf u/w/d/n), `RxValue` + `RxMeter` (mono berwarna status, meter skala
+  tetap −40..−10 dengan garis patokan ambang peringatan; −40/null tampil "—"), `ScreenHeader`
+  + `HeaderIconButton` + `BrandMark`, `AsyncState` (loading/error/empty seragam).
+- **Changed — `home_screen.dart`** ditulis ulang: header dengan tombol alert (titik merah bila
+  ada critical) dan muat ulang; hero kesehatan (ring + kalimat keadaan + badge Aktif/Gagal/
+  Nonaktif) menggantikan gradien teal→sky; 4 ubin KPI; "RX terendah" (device · port mono ·
+  alias, RxValue dengan meter); "Alert terbaru" dengan garis severity 3 px. Skor kesehatan
+  tetap rumus lama (tiap 1 % port bermasalah −3 poin).
+- **Changed — `interfaces_screen.dart`** ditulis ulang: kotak cari (debounce 400 ms →
+  `q`), chip perangkat horizontal, segmen Semua/Marjinal/Down (`status=all|warn|down`), toggle
+  urutan perangkat/RX terendah (`sort=device|rx`), daftar dalam satu kartu dengan baris:
+  nama perangkat + badge · port mono + alias · **bar riwayat 24 jam** + RX + kecepatan.
+  Kartu per-baris lama dengan tiga kotak RX/TX/Speed dan dua kotak In/Out dihapus (detail tetap
+  di layar traffic).
+- **Changed — `home_shell.dart`**: label tab Beranda / Monitoring / Interface / Peta / Akun.
+- **Changed — sapuan token di layar lain** (`map`, `monitoring`, `interface_traffic`,
+  `alerts`, `settings`, `about`, `login`): seluruh warna hardcode diganti token (kini **0** hex
+  di `lib/src/ui`); `_rxColor`, `_linkLevel`, `_MetricChip._dotColor` memakai
+  `RxThresholds.current` — pita "warning −25..−18" di peta yang terbalik ikut hilang; hero
+  gradien monitoring jadi kartu permukaan; seri grafik traffic In/Out memakai aksen/info (bukan
+  hijau status); legenda peta "Warning" → "Marjinal"; layar Tentang berbahasa Indonesia.
+- **Created — `app/Support/RxThresholds.php`** (sisi Laravel): `global()` membaca
+  `settings.alert_rx_warning_low` / `alert_rx_down_threshold` (default −25 / −40, logika sama
+  dengan `InterfaceThresholdsController::globalThresholds()`); `history24h(pairs, thresholds)`
+  membangun 24 bucket per (device_id, if_index) dari `interface_stats_hourly` (rx_min ≤ down →
+  d, rx_avg < warn → w, ada sampel → u, tanpa sampel → n). Terukur **7 ms** untuk 4 interface,
+  ~100 ms untuk halaman 25 baris termasuk kueri utama; indeks `idx_dev_if_bucket` sudah ada.
+- **Changed — `Api/V1/DashboardController`**: respons membawa `thresholds`; `worst_ports` kini
+  **hanya port hidup dengan pembacaan nyata** (`oper_status = 1 AND rx_power > ambang down`) —
+  sebelumnya enam teratas selalu slot SFP kosong bernilai −40, sehingga daftar tak berguna.
+- **Changed — `Api/V1/InterfacesController::index`**: parameter baru `status=warn` (up tapi RX
+  di antara ambang down dan peringatan) dan `sort=rx` (port hidup RX terlemah di atas, port
+  down/tanpa DDM di bawah); tiap baris membawa `history_24h`; `meta.thresholds` ditambahkan.
+  Tidak ada rute baru → `route:cache` tidak perlu disegarkan.
+- **Notes — verifikasi**: `flutter analyze` bersih; `flutter build apk --release` sukses →
+  `mobile/build/app/outputs/flutter-apk/app-release.apk` (56,6 MB). Uji controller sebagai admin:
+  dashboard 82 ms; `/interfaces?sort=rx` 100 ms (269 port); `status=down` 128 port;
+  `status=warn` 0 port saat ini; `q=uplink` 7 hasil dengan riwayat 24 jam terisi.
+- **Notes — rilis**: atas permintaan user, `bash bin/build-apk.sh` dijalankan langsung tanpa
+  uji HP dulu → `public/downloads/netpulse.apk` kini **2.1.0 (versionCode 6)**, 56,6 MB, milik
+  `www-data`. Tombol unduh di topbar/sidebar web sudah tidak membawa teks versi, jadi tidak ada
+  badge yang perlu diubah. Layar Monitoring, Peta, Traffic, dan Akun baru disapu warnanya, belum
+  ditata ulang ke bahasa widget bersama; 32 varian padding lama di layar-layar itu masih ada.
+
+---
+
 ## 2026-09-17 — Created: Endpoint `/healthz` untuk Monitoring Uptime
 
 - **Created — `routes/web.php`: `GET /healthz`** (tanpa auth, bernama `healthz`). Membalas

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\RxThresholds;
 use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,7 @@ class DashboardController extends Controller
                     'device_health'    => $dh,
                     'worst_ports'      => collect(ViewerDummyData::dashboardWorstPorts())->map(fn($p) => (array)$p)->values()->all(),
                     'recent_alerts'    => collect(ViewerDummyData::dashboardRecentAlerts())->map(fn($a) => (array)$a)->values()->all(),
+                    'thresholds'       => RxThresholds::global(),
                 ],
             ]);
         }
@@ -99,17 +101,23 @@ class DashboardController extends Controller
         $ifDownCount = (int) ($ifStatusRow->down_count ?? 0);
 
         // ── Worst SFP Ports (6 lowest RX power) ─────────────────────────────
+        // Hanya port yang hidup dan punya pembacaan nyata: port down / SFP kosong
+        // bernilai −40 (tanpa pembacaan) dikecualikan supaya daftar ini benar-benar
+        // menunjukkan port marjinal, bukan slot kosong.
+        $thresholds = RxThresholds::global();
         $worstPorts = DB::select("
             SELECT i.if_name, i.if_alias, i.rx_power, i.tx_power,
                    d.device_name, d.ip_address
             FROM interfaces i
             JOIN snmp_devices d ON d.id = i.device_id
             WHERE i.is_sfp = 1
+              AND i.oper_status = 1
               AND i.rx_power IS NOT NULL
+              AND i.rx_power > ?
               AND i.tx_power IS NOT NULL
             ORDER BY i.rx_power ASC
             LIMIT 6
-        ");
+        ", [$thresholds['rx_down_threshold']]);
 
         // ── Recent Alerts (8 latest) ─────────────────────────────────────────
         $recentAlerts = [];
@@ -136,6 +144,7 @@ class DashboardController extends Controller
                 'device_health'     => $deviceHealth,
                 'worst_ports'       => collect($worstPorts)->map(fn($p) => (array)$p)->values()->all(),
                 'recent_alerts'     => collect($recentAlerts)->map(fn($a) => (array)$a)->values()->all(),
+                'thresholds'        => $thresholds,
             ],
         ]);
     }
