@@ -55,6 +55,7 @@ class InterfaceDiscovery
         $ifIndex = @\snmp2_walk($ip, $community, '1.3.6.1.2.1.2.2.1.1', $snmpTimeout, $snmpRetries);
 
         if (!$ifIndex) {
+            $this->markDeviceStatus($deviceId, false, 'SNMP tidak menjawab (IF-MIB ifIndex) saat polling');
             if ($isCli) {
                 $deviceLabel = trim(($device->device_name ?? '') . ' (' . $ip . ')');
                 $timeLabel = date('Y-m-d H:i:s');
@@ -161,6 +162,7 @@ class InterfaceDiscovery
         }
 
         if (!$ifName) {
+            $this->markDeviceStatus($deviceId, false, 'SNMP tidak menjawab (IF-MIB ifName) saat polling');
             if ($isCli && $alertStateDirty) {
                 $this->saveAlertState($alertStateFile, $alertState);
             }
@@ -175,6 +177,9 @@ class InterfaceDiscovery
                 'error' => 'Cannot read IF-MIB',
             ];
         }
+
+        // Probe berhasil: perangkat dianggap up di daftar perangkat, peta, dan API mobile.
+        $this->markDeviceStatus($deviceId, true);
 
         $ifNameMap = [];
         foreach ($ifIndex as $i => $raw) {
@@ -711,6 +716,28 @@ class InterfaceDiscovery
         }
 
         return $map;
+    }
+
+    /**
+     * Catat hasil probe SNMP ke `snmp_devices` supaya daftar perangkat, peta web,
+     * dan API mobile membaca keadaan yang sama dengan alert Telegram/FCM.
+     *
+     * Sebelumnya hanya tombol "Test SNMP" (DevicesApiController::testSnmp) yang
+     * menulis `last_status`; poller hanya mengirim alert, sehingga perangkat yang
+     * sudah dinyatakan DOWN tetap tampil "online" sampai ditest manual.
+     */
+    private function markDeviceStatus(int $deviceId, bool $up, ?string $error = null): void
+    {
+        try {
+            DB::table('snmp_devices')->where('id', $deviceId)->update([
+                'last_status' => $up ? 'OK' : 'FAILED',
+                'last_error' => $up ? null : substr((string) $error, 0, 250),
+                'last_monitor_status' => $up ? 'up' : 'down',
+                'last_monitor_time' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('markDeviceStatus gagal', ['device_id' => $deviceId, 'error' => $e->getMessage()]);
+        }
     }
 
     private function loadAlertSettings(): array
