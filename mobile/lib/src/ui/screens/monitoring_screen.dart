@@ -6,6 +6,8 @@ import '../../auth/session_store.dart';
 import '../../features/monitoring/monitoring_models.dart';
 import '../../features/monitoring/monitoring_service.dart';
 import '../../theme/theme_helper.dart';
+import '../../theme/tokens.dart';
+import '../../theme/status.dart';
 
 class MonitoringScreen extends StatefulWidget {
   const MonitoringScreen({super.key});
@@ -367,7 +369,7 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
         LineChartBarData(
           isCurved: true,
           spots: rxSpots,
-          color: Colors.redAccent,
+          color: context.np.accent,
           barWidth: 2,
           dotData: const FlDotData(show: false),
         ),
@@ -428,7 +430,7 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final k = context.np;
     final last = chart.isNotEmpty ? chart.last : null;
     final rx = iface?.rxPower ?? last?.rxPower;
     final tx = iface?.txPower ?? last?.txPower;
@@ -438,31 +440,24 @@ class _SummaryCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          colors: [scheme.primary, scheme.secondary],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: k.surface,
+        borderRadius: BorderRadius.circular(NpRadius.card),
+        border: Border.all(color: k.border),
+        boxShadow: k.shadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             device?.name ?? 'Pilih device',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 6),
           Text(
             iface != null
                 ? '${iface!.ifName} ${iface!.ifAlias ?? ''}'.trim()
                 : '-',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.white.withValues(alpha: 0.85),
-            ),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 12),
           Row(
@@ -491,26 +486,22 @@ class _MetricChip extends StatelessWidget {
   final double? value;
   final String unit;
 
-  Color? get _dotColor {
-    if (value == null) return null;
-    if (label == 'RX') {
-      if (value! <= -35) return const Color(0xFFDC2626);
-      if (value! < -26) return const Color(0xFFEA580C);
-      if (value! < -22) return const Color(0xFFFBBF24);
-      return const Color(0xFF4ADE80);
-    }
-    return null;
+  /// Titik status hanya untuk RX, dari ambang server.
+  Color? _dotColor(BuildContext context) {
+    if (value == null || label != 'RX') return null;
+    return context.np.status(RxThresholds.current.statusOf(rx: value)).mark;
   }
 
   @override
   Widget build(BuildContext context) {
-    final dot = _dotColor;
+    final k = context.np;
+    final dot = _dotColor(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(999),
+        color: k.surface2,
+        borderRadius: BorderRadius.circular(NpRadius.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -530,10 +521,7 @@ class _MetricChip extends StatelessWidget {
             value != null
                 ? '$label ${value!.toStringAsFixed(2)} $unit'
                 : '$label -',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
+            style: NpText.mono(size: 12, color: k.ink),
           ),
         ],
       ),

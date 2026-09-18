@@ -12,11 +12,13 @@ class InterfacesService {
     int? deviceId,
     String status = 'all',
     String q = '',
+    String sort = 'device',
   }) async {
     final query = <String, dynamic>{
       'page': page,
       'per_page': perPage,
       'status': status,
+      'sort': sort,
     };
     if (deviceId != null && deviceId > 0) query['device_id'] = deviceId;
     if (q.trim().isNotEmpty) query['q'] = q.trim();

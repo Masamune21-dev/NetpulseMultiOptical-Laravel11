@@ -42,9 +42,9 @@ class _HomeShellState extends State<HomeShell> {
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+            icon: Icon(Icons.grid_view_rounded),
+            selectedIcon: Icon(Icons.grid_view_rounded),
+            label: 'Beranda',
           ),
           NavigationDestination(
             icon: Icon(Icons.monitor_heart_outlined),
@@ -52,14 +52,14 @@ class _HomeShellState extends State<HomeShell> {
             label: 'Monitoring',
           ),
           NavigationDestination(
-            icon: Icon(Icons.cable_outlined),
-            selectedIcon: Icon(Icons.cable),
-            label: 'Interfaces',
+            icon: Icon(Icons.format_list_bulleted_rounded),
+            selectedIcon: Icon(Icons.format_list_bulleted_rounded),
+            label: 'Interface',
           ),
           NavigationDestination(
             icon: Icon(Icons.map_outlined),
             selectedIcon: Icon(Icons.map),
-            label: 'Map',
+            label: 'Peta',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),

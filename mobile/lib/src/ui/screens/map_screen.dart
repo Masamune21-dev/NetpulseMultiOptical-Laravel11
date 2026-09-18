@@ -12,6 +12,8 @@ import '../../auth/session_store.dart';
 import '../../features/map/map_models.dart';
 import '../../features/map/map_service.dart';
 import '../../theme/theme_helper.dart';
+import '../../theme/tokens.dart';
+import '../../theme/status.dart';
 
 enum _LinkFilter { all, up, warning, down }
 
@@ -103,7 +105,7 @@ class _MapScreenState extends State<MapScreen> {
       final b = byId[l.bId];
       if (a == null || b == null) continue;
 
-      final color = _colorForLevel(_linkLevel(l));
+      final color = _colorForLevel(context, _linkLevel(l));
       final points = [
         LatLng(a.lat, a.lng),
         ...l.path.map((p) => LatLng(p.lat, p.lng)),
@@ -123,7 +125,7 @@ class _MapScreenState extends State<MapScreen> {
     final markers = _nodes.map((n) {
       final ok = _statusIsUp(n.status);
       final icon = _iconForType(n.type);
-      final tone = ok ? const Color(0xFF0F766E) : const Color(0xFFDC2626);
+      final tone = ok ? context.np.ok : context.np.bad;
 
       return Marker(
         point: LatLng(n.lat, n.lng),
@@ -173,9 +175,7 @@ class _MapScreenState extends State<MapScreen> {
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: context.isDark
-                          ? const [Color(0xFF0B1120), Color(0xFF0F172A)]
-                          : const [Color(0xFFF2F8F7), Color(0xFFE8F1F8)],
+                      colors: [context.np.bg, context.np.surface2],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -259,9 +259,7 @@ class _MapScreenState extends State<MapScreen> {
                 children: [
                   _StatusBadge(
                     text: _statusIsUp(n.status) ? 'UP' : 'DOWN',
-                    color: _statusIsUp(n.status)
-                        ? const Color(0xFF16A34A)
-                        : const Color(0xFFDC2626),
+                    color: _statusIsUp(n.status) ? context.np.ok : context.np.bad,
                   ),
                   const SizedBox(width: 8),
                   Expanded(child: Text('LatLng: ${n.lat}, ${n.lng}')),
@@ -290,7 +288,7 @@ class _MapScreenState extends State<MapScreen> {
                       final tx = it.txPower;
                       final status = (it.operStatus ?? '').toLowerCase();
                       final ok = status == 'up' || status == 'ok';
-                      final rxColor = _rxColor(rx);
+                      final rxColor = _rxColor(context, rx);
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -300,7 +298,7 @@ class _MapScreenState extends State<MapScreen> {
                             margin: const EdgeInsets.only(top: 6),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: ok ? Colors.green : Colors.redAccent,
+                              color: ok ? context.np.ok : context.np.bad,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -510,7 +508,7 @@ class _TopPanel extends StatelessWidget {
                     value: _LinkFilter.all,
                     label: 'All',
                     count: total,
-                    color: const Color(0xFF64748B),
+                    color: context.np.ink2,
                   ),
                   const SizedBox(width: 6),
                   _filterChip(
@@ -518,7 +516,7 @@ class _TopPanel extends StatelessWidget {
                     value: _LinkFilter.up,
                     label: 'Up',
                     count: upLinks,
-                    color: const Color(0xFF16A34A),
+                    color: context.np.ok,
                   ),
                   const SizedBox(width: 6),
                   _filterChip(
@@ -526,7 +524,7 @@ class _TopPanel extends StatelessWidget {
                     value: _LinkFilter.warning,
                     label: 'Warn',
                     count: warningLinks,
-                    color: const Color(0xFFF59E0B),
+                    color: context.np.warn,
                   ),
                   const SizedBox(width: 6),
                   _filterChip(
@@ -534,7 +532,7 @@ class _TopPanel extends StatelessWidget {
                     value: _LinkFilter.down,
                     label: 'Down',
                     count: downLinks,
-                    color: const Color(0xFFDC2626),
+                    color: context.np.bad,
                   ),
                 ],
               ),
@@ -662,13 +660,13 @@ class _LegendCardState extends State<_LegendCard> {
             ),
             if (_expanded) ...[
               const SizedBox(height: 8),
-              const Wrap(
+              Wrap(
                 spacing: 12,
                 runSpacing: 6,
                 children: [
-                  _LegendDot(color: Color(0xFF16A34A), label: 'Up'),
-                  _LegendDot(color: Color(0xFFF59E0B), label: 'Warning'),
-                  _LegendDot(color: Color(0xFFDC2626), label: 'Down'),
+                  _LegendDot(color: context.np.ok, label: 'Up'),
+                  _LegendDot(color: context.np.warn, label: 'Marjinal'),
+                  _LegendDot(color: context.np.bad, label: 'Down'),
                 ],
               ),
             ],
@@ -736,12 +734,10 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-Color _rxColor(double? rx) {
-  if (rx == null) return Colors.grey;
-  if (rx <= -40) return Colors.redAccent;
-  if (rx >= -25 && rx <= -18) return Colors.orange;
-  return Colors.green;
-}
+/// Warna RX dari ambang server (bukan angka lokal) — satu aturan dengan
+/// layar Beranda dan Interface.
+Color _rxColor(BuildContext context, double? rx) =>
+    context.np.status(RxThresholds.current.statusOf(rx: rx)).mark;
 
 List<Polyline> _animatedDashes(List<LatLng> points, double phase, Color color) {
   if (points.length < 2) return const [];
@@ -804,20 +800,19 @@ _LinkLevel _linkLevel(MapLink link) {
   if (downByInterface) return _LinkLevel.down;
 
   final attenuation = _effectiveAttenuation(link);
-  if (attenuation != null && attenuation <= -40) {
-    return _LinkLevel.down;
-  }
-  if (attenuation != null && attenuation >= -25 && attenuation <= -18) {
-    return _LinkLevel.warning;
-  }
-  return _LinkLevel.up;
+  if (attenuation == null) return _LinkLevel.up;
+  return switch (RxThresholds.current.statusOf(rx: attenuation)) {
+    NetStatus.down => _LinkLevel.down,
+    NetStatus.warn => _LinkLevel.warning,
+    _ => _LinkLevel.up,
+  };
 }
 
-Color _colorForLevel(_LinkLevel level) {
+Color _colorForLevel(BuildContext context, _LinkLevel level) {
   return switch (level) {
-    _LinkLevel.down => const Color(0xFFDC2626),
-    _LinkLevel.warning => const Color(0xFFF59E0B),
-    _LinkLevel.up => const Color(0xFF16A34A),
+    _LinkLevel.down => context.np.bad,
+    _LinkLevel.warning => context.np.warn,
+    _LinkLevel.up => context.np.ok,
   };
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../api/api_client.dart';
 import '../../auth/auth_service.dart';
@@ -254,11 +255,18 @@ class _AccountScreenState extends State<AccountScreen> {
                         ),
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    'Versi saat ini: v2.0.3 (Build 5)',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                  FutureBuilder<PackageInfo>(
+                    future: PackageInfo.fromPlatform(),
+                    builder: (context, snap) {
+                      final v = snap.data;
+                      final label = v == null ? 'Versi saat ini: …' : 'Versi saat ini: v${v.version} (Build ${v.buildNumber})';
+                      return Text(
+                        label,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   SizedBox(

@@ -1,3 +1,5 @@
+import '../../theme/status.dart';
+
 class DeviceHealth {
   const DeviceHealth({
     required this.total,
@@ -103,6 +105,7 @@ class DashboardCounts {
     required this.deviceHealth,
     required this.worstPorts,
     required this.recentAlerts,
+    this.thresholds = RxThresholds.defaults,
   });
 
   final int deviceCount;
@@ -116,6 +119,9 @@ class DashboardCounts {
   final DeviceHealth deviceHealth;
   final List<WorstPort> worstPorts;
   final List<RecentAlert> recentAlerts;
+
+  /// Ambang RX global dari server — diadopsi sebagai [RxThresholds.current].
+  final RxThresholds thresholds;
 
   factory DashboardCounts.fromJson(Map<String, dynamic> json) {
     int numVal(String key) {
@@ -157,6 +163,7 @@ class DashboardCounts {
       deviceHealth: health,
       worstPorts: ports,
       recentAlerts: alerts,
+      thresholds: RxThresholds.fromJson((json['thresholds'] as Map?)?.cast<String, dynamic>()).adopt(),
     );
   }
 }

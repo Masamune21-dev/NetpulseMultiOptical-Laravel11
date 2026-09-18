@@ -5,6 +5,7 @@ import '../auth/auth_service.dart';
 import '../auth/session_store.dart';
 import '../push/fcm_service.dart';
 import 'home_shell.dart';
+import '../theme/tokens.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -109,14 +110,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.88),
-                              borderRadius: BorderRadius.circular(999),
+                              color: context.np.surface,
+                              borderRadius: BorderRadius.circular(NpRadius.pill),
                               border: Border.all(
                                 color: scheme.primary.withValues(alpha: 0.2),
                               ),
                             ),
                             child: Text(
-                              'Netpulse Mobile 2.0',
+                              'Netpulse Mobile',
                               style: Theme.of(context).textTheme.labelLarge
                                   ?.copyWith(
                                     color: scheme.primary,
@@ -127,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 18),
                         Text(
-                          'Network Control Login',
+                          'Masuk ke Netpulse',
                           style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.w800,
@@ -149,9 +150,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: double.infinity,
                           constraints: const BoxConstraints(maxWidth: 460),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.95),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: const Color(0xFFD8E3EE)),
+                            color: context.np.surface,
+                            borderRadius: BorderRadius.circular(NpRadius.sheet),
+                            border: Border.all(color: context.np.border),
                             boxShadow: [
                               BoxShadow(
                                 color: scheme.primary.withValues(alpha: 0.08),

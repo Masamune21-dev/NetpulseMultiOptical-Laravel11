@@ -1,12 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../api/api_client.dart';
 import '../../auth/session_store.dart';
 import '../../features/interfaces/interfaces_models.dart';
 import '../../features/interfaces/interfaces_service.dart';
-import '../../theme/theme_helper.dart';
+import '../../theme/status.dart';
+import '../../theme/tokens.dart';
+import '../widgets/async_state.dart';
+import '../widgets/heartbeat_bar.dart';
+import '../widgets/rx_meter.dart';
+import '../widgets/screen_header.dart';
+import '../widgets/section_card.dart';
+import '../widgets/status_badge.dart';
 import 'interface_traffic_screen.dart';
 
+/// Daftar interface SFP: cari, chip perangkat, segmen status, urutan; tiap
+/// baris membawa bar riwayat 24 jam, RX mono + meter, dan badge berkata.
 class InterfacesScreen extends StatefulWidget {
   const InterfacesScreen({super.key});
 
@@ -16,23 +27,28 @@ class InterfacesScreen extends StatefulWidget {
 
 class _InterfacesScreenState extends State<InterfacesScreen> {
   static const _perPage = 25;
+  static const _statusOptions = [('all', 'Semua'), ('warn', 'Marjinal'), ('down', 'Down')];
 
   final _scrollCtrl = ScrollController();
+  final _searchCtrl = TextEditingController();
+  Timer? _debounce;
 
   bool _loading = false;
   bool _loadingMore = false;
   bool _loadingDevices = false;
   bool _hasMore = true;
   String? _error;
-  String? _deviceError;
   int _page = 1;
   int _total = 0;
   int _selectedDeviceId = 0;
+  String _status = 'all';
+  String _sort = 'device';
+  String _q = '';
   final List<InterfaceDevice> _devices = [];
   final List<InterfaceRow> _rows = [];
+  RxThresholds _thresholds = RxThresholds.current;
 
-  InterfacesService get _svc =>
-      InterfacesService(ApiClient(SessionStore.instance));
+  InterfacesService get _svc => InterfacesService(ApiClient(SessionStore.instance));
 
   @override
   void initState() {
@@ -44,38 +60,30 @@ class _InterfacesScreenState extends State<InterfacesScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _scrollCtrl.removeListener(_onScroll);
     _scrollCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
   void _onScroll() {
     if (_loadingMore || _loading || !_hasMore) return;
-    if (_scrollCtrl.position.pixels >=
-        _scrollCtrl.position.maxScrollExtent - 200) {
-      _loadMore();
-    }
+    if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 200) _loadMore();
   }
 
   Future<void> _load({bool reset = false}) async {
-    if (reset) {
-      setState(() {
-        _loading = true;
-        _error = null;
+    setState(() {
+      _loading = true;
+      _error = null;
+      if (reset) {
         _page = 1;
         _hasMore = true;
-        _rows.clear();
-      });
-    } else {
-      setState(() => _loading = true);
-    }
-
+      }
+    });
     try {
-      final res = await _svc.list(
-        page: 1,
-        perPage: _perPage,
-        deviceId: _selectedDeviceId,
-      );
+      final res = await _svc.list(page: 1, perPage: _perPage, deviceId: _selectedDeviceId, status: _status, q: _q, sort: _sort);
+      if (!mounted) return;
       setState(() {
         _rows
           ..clear()
@@ -83,8 +91,10 @@ class _InterfacesScreenState extends State<InterfacesScreen> {
         _total = res.meta.total;
         _page = res.meta.page;
         _hasMore = res.meta.page < res.meta.lastPage;
+        _thresholds = res.meta.thresholds;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -94,14 +104,9 @@ class _InterfacesScreenState extends State<InterfacesScreen> {
   Future<void> _loadMore() async {
     if (_loadingMore || !_hasMore) return;
     setState(() => _loadingMore = true);
-
     try {
-      final next = _page + 1;
-      final res = await _svc.list(
-        page: next,
-        perPage: _perPage,
-        deviceId: _selectedDeviceId,
-      );
+      final res = await _svc.list(page: _page + 1, perPage: _perPage, deviceId: _selectedDeviceId, status: _status, q: _q, sort: _sort);
+      if (!mounted) return;
       setState(() {
         _rows.addAll(res.data);
         _page = res.meta.page;
@@ -109,6 +114,7 @@ class _InterfacesScreenState extends State<InterfacesScreen> {
         _hasMore = res.meta.page < res.meta.lastPage;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loadingMore = false);
@@ -116,11 +122,7 @@ class _InterfacesScreenState extends State<InterfacesScreen> {
   }
 
   Future<void> _loadDevices() async {
-    setState(() {
-      _loadingDevices = true;
-      _deviceError = null;
-    });
-
+    setState(() => _loadingDevices = true);
     try {
       final devices = await _svc.devices();
       if (!mounted) return;
@@ -128,14 +130,10 @@ class _InterfacesScreenState extends State<InterfacesScreen> {
         _devices
           ..clear()
           ..addAll(devices);
-        if (_selectedDeviceId > 0 &&
-            !_devices.any((device) => device.id == _selectedDeviceId)) {
-          _selectedDeviceId = 0;
-        }
+        if (_selectedDeviceId > 0 && !_devices.any((d) => d.id == _selectedDeviceId)) _selectedDeviceId = 0;
       });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _deviceError = e.toString());
+    } catch (_) {
+      // Chip perangkat tidak wajib; daftar tetap bisa dimuat tanpa filter.
     } finally {
       if (mounted) setState(() => _loadingDevices = false);
     }
@@ -146,252 +144,288 @@ class _InterfacesScreenState extends State<InterfacesScreen> {
     await _load(reset: true);
   }
 
-  void _setDevice(int? id) {
-    final next = id ?? 0;
-    if (next == _selectedDeviceId) return;
-    setState(() => _selectedDeviceId = next);
+  void _setDevice(int id) {
+    if (id == _selectedDeviceId) return;
+    setState(() => _selectedDeviceId = id);
     _load(reset: true);
+  }
+
+  void _setStatus(String s) {
+    if (s == _status) return;
+    setState(() => _status = s);
+    _load(reset: true);
+  }
+
+  void _toggleSort() {
+    setState(() => _sort = _sort == 'rx' ? 'device' : 'rx');
+    _load(reset: true);
+  }
+
+  void _onSearchChanged(String v) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      final next = v.trim();
+      if (next == _q) return;
+      _q = next;
+      _load(reset: true);
+    });
   }
 
   void _openDetail(InterfaceRow r) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => InterfaceTrafficScreen(
-          deviceId: r.deviceId,
-          ifIndex: r.ifIndex,
-          initialIfName: r.ifName ?? 'if${r.ifIndex}',
-        ),
+        builder: (_) => InterfaceTrafficScreen(deviceId: r.deviceId, ifIndex: r.ifIndex, initialIfName: r.ifName ?? 'if${r.ifIndex}'),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final k = context.np;
+    final t = Theme.of(context).textTheme;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Interfaces'),
-        actions: [
-          IconButton(
-            onPressed: (_loading || _loadingDevices) ? null : () => _refresh(),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _FilterBar(
-            devices: _devices,
-            selectedDeviceId: _selectedDeviceId,
-            loadingDevices: _loadingDevices,
-            deviceError: _deviceError,
-            onDeviceChanged: _setDevice,
-            total: _total,
-          ),
-          Expanded(
-            child: RefreshIndicator(onRefresh: _refresh, child: _buildBody()),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_loading && _rows.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          const SizedBox(height: 80),
-          Center(
-            child: Column(
-              children: const [
-                CircularProgressIndicator(),
-                SizedBox(height: 10),
-                Text('Loading interfaces...'),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (_error != null && _rows.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          const SizedBox(height: 80),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 40,
-                    color: Colors.redAccent,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(_error!, textAlign: TextAlign.center),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () => _load(reset: true),
-                    child: const Text('Coba lagi'),
+      body: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(NpSpace.lg, NpSpace.sm, NpSpace.lg, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ScreenHeader(
+                title: 'Interface',
+                subtitle: '$_total port · ${_devices.length} perangkat',
+                actions: [
+                  HeaderIconButton(
+                    icon: Icons.refresh_rounded,
+                    tooltip: 'Muat ulang',
+                    busy: _loading || _loadingDevices,
+                    onTap: _refresh,
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (_rows.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          const SizedBox(height: 80),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Text(
-                'Tidak ada interface ditemukan',
-                style: TextStyle(color: context.textFaint),
+              const SizedBox(height: NpSpace.md),
+              TextField(
+                controller: _searchCtrl,
+                onChanged: _onSearchChanged,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: 'Cari perangkat, port, atau alias',
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  isDense: true,
+                  suffixIcon: _searchCtrl.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            _onSearchChanged('');
+                          },
+                        ),
+                ),
               ),
-            ),
+              const SizedBox(height: NpSpace.md),
+              _DeviceChips(devices: _devices, selectedId: _selectedDeviceId, onSelect: _setDevice),
+              const SizedBox(height: NpSpace.md),
+              _Segmented(options: _statusOptions, value: _status, onChanged: _setStatus),
+              const SizedBox(height: NpSpace.sm),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _toggleSort,
+                        child: Text.rich(
+                          TextSpan(
+                            text: 'Diurutkan: ',
+                            children: [
+                              TextSpan(
+                                text: _sort == 'rx' ? 'RX terendah' : 'perangkat',
+                                style: TextStyle(color: k.accent, fontWeight: FontWeight.w600),
+                              ),
+                              const TextSpan(text: ' ▾'),
+                            ],
+                          ),
+                          style: t.bodySmall,
+                        ),
+                      ),
+                    ),
+                    Text('Riwayat 24 jam', style: t.bodySmall),
+                  ],
+                ),
+              ),
+              const SizedBox(height: NpSpace.sm),
+              Expanded(child: _list()),
+              const SizedBox(height: NpSpace.md),
+            ],
           ),
-        ],
-      );
-    }
-
-    return ListView.separated(
-      controller: _scrollCtrl,
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-      itemCount: _rows.length + (_hasMore ? 1 : 0),
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, idx) {
-        if (idx >= _rows.length) {
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: _loadingMore
-                  ? const CircularProgressIndicator(strokeWidth: 2)
-                  : const SizedBox.shrink(),
-            ),
-          );
-        }
-        return _InterfaceCard(
-          row: _rows[idx],
-          onTap: () => _openDetail(_rows[idx]),
-        );
-      },
+        ),
+      ),
     );
   }
-}
 
-class _FilterBar extends StatelessWidget {
-  const _FilterBar({
-    required this.devices,
-    required this.selectedDeviceId,
-    required this.loadingDevices,
-    required this.deviceError,
-    required this.onDeviceChanged,
-    required this.total,
-  });
+  Widget _list() {
+    if (_loading && _rows.isEmpty) return const AsyncState.loading(message: 'Memuat interface…');
+    if (_error != null && _rows.isEmpty) return AsyncState.error(message: _error!, onRetry: () => _load(reset: true));
+    if (_rows.isEmpty) {
+      return AsyncState.empty(message: 'Tidak ada interface yang cocok.', icon: Icons.search_off_rounded, onRetry: _refresh);
+    }
 
-  final List<InterfaceDevice> devices;
-  final int selectedDeviceId;
-  final bool loadingDevices;
-  final String? deviceError;
-  final ValueChanged<int?> onDeviceChanged;
-  final int total;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      elevation: 0,
-      color: scheme.surface,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DropdownButtonFormField<int>(
-              key: ValueKey(selectedDeviceId),
-              initialValue: selectedDeviceId,
-              isExpanded: true,
-              menuMaxHeight: 320,
-              icon: loadingDevices
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.keyboard_arrow_down_rounded),
-              items: [
-                const DropdownMenuItem<int>(
-                  value: 0,
-                  child: Text('Semua device'),
+    return SectionCard(
+      clip: true,
+      child: RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView.builder(
+          controller: _scrollCtrl,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          itemCount: _rows.length + (_hasMore ? 1 : 0),
+          itemBuilder: (context, i) {
+            if (i >= _rows.length) {
+              return Padding(
+                padding: const EdgeInsets.all(NpSpace.lg),
+                child: Center(
+                  child: _loadingMore
+                      ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: context.np.accent))
+                      : const SizedBox.shrink(),
                 ),
-                ...devices.map(
-                  (device) => DropdownMenuItem<int>(
-                    value: device.id,
-                    child: Text(
-                      device.name.isNotEmpty
-                          ? device.name
-                          : 'Device ${device.id}',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ],
-              onChanged: loadingDevices ? null : onDeviceChanged,
-              decoration: InputDecoration(
-                labelText: 'Filter device',
-                prefixIcon: const Icon(Icons.devices_other_outlined),
-                isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            if (deviceError != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                'Filter device gagal dimuat',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: const Color(0xFFDC2626),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-            const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '$total interfaces',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: context.textMuted,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
+              );
+            }
+            return _InterfaceRowTile(
+              row: _rows[i],
+              thresholds: _thresholds,
+              first: i == 0,
+              onTap: () => _openDetail(_rows[i]),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class _InterfaceCard extends StatelessWidget {
-  const _InterfaceCard({required this.row, required this.onTap});
+// ── Filter ───────────────────────────────────────────────────────────────────
 
-  final InterfaceRow row;
+class _DeviceChips extends StatelessWidget {
+  const _DeviceChips({required this.devices, required this.selectedId, required this.onSelect});
+
+  final List<InterfaceDevice> devices;
+  final int selectedId;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 32,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: devices.length + 1,
+        separatorBuilder: (_, _) => const SizedBox(width: NpSpace.sm),
+        itemBuilder: (context, i) {
+          final id = i == 0 ? 0 : devices[i - 1].id;
+          final name = i == 0 ? 'Semua perangkat' : (devices[i - 1].name.isNotEmpty ? devices[i - 1].name : 'Perangkat $id');
+          return _Chip(label: name, selected: id == selectedId, onTap: () => onSelect(id));
+        },
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
   final VoidCallback onTap;
 
-  String _formatBps(int? bps, {int decimals = 1}) {
-    if (bps == null || bps < 0) return '—';
-    if (bps == 0) return '0 bps';
+  @override
+  Widget build(BuildContext context) {
+    final k = context.np;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(NpRadius.pill),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: NpMotion.fast,
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: NpSpace.md),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? k.accent : k.surface,
+            borderRadius: BorderRadius.circular(NpRadius.pill),
+            border: Border.all(color: selected ? k.accent : k.border),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(color: selected ? k.onAccent : k.ink2),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Segmented extends StatelessWidget {
+  const _Segmented({required this.options, required this.value, required this.onChanged});
+
+  final List<(String, String)> options;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = context.np;
+    final t = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: k.surface2,
+        borderRadius: BorderRadius.circular(NpRadius.control),
+        border: Border.all(color: k.border),
+      ),
+      child: Row(
+        children: [
+          for (final (key, label) in options)
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onChanged(key),
+                child: AnimatedContainer(
+                  duration: NpMotion.fast,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: key == value ? k.surface : Colors.transparent,
+                    borderRadius: BorderRadius.circular(9),
+                    boxShadow: key == value ? k.shadow : null,
+                  ),
+                  child: Text(
+                    label,
+                    style: t.labelMedium?.copyWith(color: key == value ? k.ink : k.ink2),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Baris ────────────────────────────────────────────────────────────────────
+
+class _InterfaceRowTile extends StatelessWidget {
+  const _InterfaceRowTile({required this.row, required this.thresholds, required this.first, required this.onTap});
+
+  final InterfaceRow row;
+  final RxThresholds thresholds;
+  final bool first;
+  final VoidCallback onTap;
+
+  static String formatSpeed(int? bps) {
+    if (bps == null || bps <= 0) return '—';
     const units = ['bps', 'Kbps', 'Mbps', 'Gbps', 'Tbps'];
     var v = bps.toDouble();
     var i = 0;
@@ -399,305 +433,68 @@ class _InterfaceCard extends StatelessWidget {
       v /= 1000;
       i++;
     }
-    return '${v.toStringAsFixed(decimals)} ${units[i]}';
-  }
-
-  Color _rxColor(double? rx) {
-    if (rx == null) return const Color(0xFF94A3B8);
-    if (rx <= -40) return const Color(0xFFDC2626);
-    if (rx < -25) return const Color(0xFFEA580C);
-    if (rx < -18) return const Color(0xFFCA8A04);
-    return const Color(0xFF16A34A);
+    final s = v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+    return '$s ${units[i]}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final cardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final textPrimary = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1E293B);
-    final textMuted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-
-    final statusColor = row.isUp
-        ? const Color(0xFF16A34A)
-        : const Color(0xFFDC2626);
-    final statusLabel = row.isUp ? 'UP' : 'DOWN';
-    final desc = row.description;
+    final k = context.np;
+    final t = Theme.of(context).textTheme;
+    final status = thresholds.statusOf(rx: row.rxPower, operStatus: row.operStatus);
+    final alias = row.description.trim();
 
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: NpSpace.row,
         decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: cardBorder),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: first ? null : Border(top: BorderSide(color: k.border)),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // header: if name + status pill
             Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        row.ifName ?? 'if${row.ifIndex}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          color: textPrimary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      Text(row.deviceName ?? 'Perangkat ${row.deviceId}', style: t.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 2),
-                      Text(
-                        row.deviceName ?? 'Device ${row.deviceId}',
-                        style: TextStyle(
-                          color: textMuted,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: row.ifName ?? 'if${row.ifIndex}',
+                              style: NpText.mono(size: 11.5, weight: FontWeight.w500, color: k.ink2),
+                            ),
+                            TextSpan(text: alias.isNotEmpty ? ' · $alias' : ' · tanpa alias'),
+                          ],
                         ),
+                        style: t.bodySmall,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    border: Border.all(
-                      color: statusColor.withValues(alpha: 0.35),
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    statusLabel,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: textMuted,
-                ),
+                const SizedBox(width: 10),
+                StatusBadge(status),
               ],
             ),
-
-            if (desc.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                desc,
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 11.5,
-                  fontStyle: FontStyle.italic,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-
-            const SizedBox(height: 10),
-
-            // grid: RX / TX / Speed
+            const SizedBox(height: NpSpace.sm),
             Row(
               children: [
-                _metricBox(
-                  context: context,
-                  label: 'RX',
-                  value: row.rxPower != null
-                      ? '${row.rxPower!.toStringAsFixed(2)} dBm'
-                      : '—',
-                  color: _rxColor(row.rxPower),
-                  rxVal: row.rxPower,
-                ),
-                const SizedBox(width: 6),
-                _metricBox(
-                  context: context,
-                  label: 'TX',
-                  value: row.txPower != null
-                      ? '${row.txPower!.toStringAsFixed(2)} dBm'
-                      : '—',
-                  color: _rxColor(row.txPower),
-                  rxVal: row.txPower,
-                ),
-                const SizedBox(width: 6),
-                _metricBox(
-                  context: context,
-                  label: 'Speed',
-                  value: _formatBps(row.ifSpeed, decimals: 0),
-                  color: textPrimary,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            // traffic in/out
-            Row(
-              children: [
-                Expanded(
-                  child: _trafficBox(
-                    icon: Icons.arrow_downward,
-                    label: 'In',
-                    value: _formatBps(row.inRateBps),
-                    color: const Color(0xFF16A34A),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _trafficBox(
-                    icon: Icons.arrow_upward,
-                    label: 'Out',
-                    value: _formatBps(row.outRateBps),
-                    color: const Color(0xFF2563EB),
-                  ),
-                ),
+                Expanded(child: HeartbeatBar(row.history24h)),
+                const SizedBox(width: NpSpace.md),
+                RxValue(rx: row.rxPower, operStatus: row.operStatus, thresholds: thresholds, showMeter: false),
+                const SizedBox(width: NpSpace.sm),
+                Text(formatSpeed(row.ifSpeed), style: t.bodySmall?.copyWith(color: k.ink3, fontSize: 11.5)),
               ],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _metricBox({
-    required BuildContext context,
-    required String label,
-    required String value,
-    required Color color,
-    double? rxVal,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final boxBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
-    final boxBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-
-    double? signalPct;
-    if (rxVal != null) {
-      final clamped = rxVal.clamp(-40.0, -5.0);
-      signalPct = ((clamped - (-40.0)) / 35.0).clamp(0.05, 1.0);
-    }
-
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: boxBg,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: boxBorder),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                  ),
-                ),
-                if (signalPct != null)
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: color,
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: color,
-                fontFamily: 'monospace',
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (signalPct != null) ...[
-              const SizedBox(height: 4),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: LinearProgressIndicator(
-                  value: signalPct,
-                  minHeight: 2.5,
-                  backgroundColor: isDark ? Colors.white12 : Colors.black12,
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _trafficBox({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: color.withValues(alpha: 0.85),
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-              color: color,
-              fontFamily: 'monospace',
-            ),
-          ),
-        ],
       ),
     );
   }
