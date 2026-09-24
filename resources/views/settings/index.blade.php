@@ -412,8 +412,8 @@
         </p>
         <div class="table-responsive">
             <table class="table" id="opticalProfileTable">
-                <thead><tr><th>Nama</th><th>Cocok dengan</th><th>OID RX / TX</th><th>Satuan</th><th>Status</th><th></th></tr></thead>
-                <tbody><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
+                <thead><tr><th>Profil</th><th>OID RX / TX</th><th>Status</th><th></th></tr></thead>
+                <tbody><tr><td colspan="4" class="loading">Loading...</td></tr></tbody>
             </table>
         </div>
         <div class="modal-actions">

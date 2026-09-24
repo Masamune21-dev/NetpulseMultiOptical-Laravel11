@@ -4,6 +4,21 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Fixed: Tab Vendor & Optik bertabrakan dan terpotong
+
+- **Fixed**: kartu "Profil OID Optik" menabrak kartu "Vendor per Perangkat" — tab ini satu-satunya
+  yang menumpuk beberapa kartu, dan bayangan offset tema menimpa kartu berikutnya. Kini ada jarak
+  28 px, padding untuk teks bantuan & tabel, dan lebar minimum kolom nama.
+- **Fixed**: di HP tabel terpotong (kolom Driver & tombol aksi tak terlihat). Di bawah 720 px tiap
+  baris kini jadi kartu berlabel (`data-label` diisi `optical-profiles.js`).
+- **Changed**: tabel profil dipadatkan dari 6 ke 4 kolom (Profil + aturan cocok · OID RX/TX + satuan ·
+  Status · Aksi) supaya OID terbaca utuh di 1280 px; kolom aksi tak lagi dipaksa satu baris.
+- **Fixed**: modal "Profil baru" tertutup footer dan navigasi bawah HP — modal berada di dalam wadah
+  konten yang punya konteks tumpukan sendiri, jadi z-index 2000-nya kalah. Modal kini dipindah ke
+  `<body>` saat dibuka.
+- **Notes**: diverifikasi dengan screenshot 1440/1280/390 px (tabel pas: lebar gulir = lebar wadah)
+  memakai akun admin sementara acak yang sudah dihapus lagi. Test 34 lulus.
+
 ## 2026-09-24 — Created: Dukungan Optik Multi-Vendor (driver, deteksi vendor, profil OID)
 
 Sebelumnya daya optik hanya terbaca untuk MikroTik (walk MIKROTIK-MIB ke SEMUA perangkat) dan

@@ -49,18 +49,18 @@
         }
         tbody.innerHTML = state.devices.map(d => `
             <tr>
-                <td><b>${esc(d.device_name)}</b><br><small>${esc(d.ip_address)}</small></td>
-                <td>${esc(d.vendor)}${d.sys_descr ? `<br><small title="${esc(d.sys_descr)}">${esc(d.sys_descr.slice(0, 60))}</small>` : ''}</td>
-                <td><small>${esc(d.sys_object_id || '—')}</small></td>
-                <td><select data-action="override" data-device="${esc(d.id)}">${driverOptions(d.driver_override)}</select></td>
-                <td><button class="btn btn-outline" data-action="redetect" data-device="${esc(d.id)}" title="Deteksi ulang vendor" aria-label="Deteksi ulang vendor"><i class="fas fa-rotate"></i></button></td>
+                <td data-label="Perangkat"><b>${esc(d.device_name)}</b><br><small>${esc(d.ip_address)}</small></td>
+                <td data-label="Vendor terdeteksi">${esc(d.vendor)}${d.sys_descr ? `<br><small title="${esc(d.sys_descr)}">${esc(d.sys_descr.slice(0, 60))}</small>` : ''}</td>
+                <td data-label="sysObjectID"><small>${esc(d.sys_object_id || '—')}</small></td>
+                <td data-label="Driver optik"><select data-action="override" data-device="${esc(d.id)}">${driverOptions(d.driver_override)}</select></td>
+                <td class="optical-actions"><button class="btn btn-outline" data-action="redetect" data-device="${esc(d.id)}" title="Deteksi ulang vendor" aria-label="Deteksi ulang vendor"><i class="fas fa-rotate"></i></button></td>
             </tr>`).join('');
     }
 
     function renderProfiles() {
         const tbody = document.querySelector('#opticalProfileTable tbody');
         if (!state.profiles.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty">Belum ada profil</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="empty">Belum ada profil</td></tr>';
             return;
         }
         const deviceSelect = state.devices.filter(d => d.is_active)
@@ -73,12 +73,12 @@
             const match = [p.match_sys_object_id, p.match_sys_descr ? '/' + p.match_sys_descr + '/' : null].filter(Boolean).join('<br>');
             return `
             <tr>
-                <td><b>${esc(p.name)}</b>${p.notes ? `<br><small>${esc(p.notes)}</small>` : ''}</td>
-                <td><small>${match ? match.split('<br>').map(esc).join('<br>') : '— (override saja)'}</small></td>
-                <td><small>${esc(p.rx_oid)}<br>${esc(p.tx_oid || '—')}</small></td>
-                <td>${esc(state.units[p.value_unit] || p.value_unit)}<br><small>${esc(state.index_types[p.index_type] || p.index_type)}</small></td>
-                <td>${status}</td>
-                <td style="white-space:nowrap">
+                <td data-label="Profil"><b>${esc(p.name)}</b>${p.notes ? `<br><small>${esc(p.notes)}</small>` : ''}
+                    <div class="optical-sub"><small>Cocok: ${match ? match.split('<br>').map(esc).join(' · ') : '— (override saja)'}</small></div></td>
+                <td data-label="OID RX / TX"><small class="optical-oid">RX ${esc(p.rx_oid)}<br>TX ${esc(p.tx_oid || '—')}</small>
+                    <div class="optical-sub"><small>${esc(state.units[p.value_unit] || p.value_unit)} · ${esc(state.index_types[p.index_type] || p.index_type)}</small></div></td>
+                <td data-label="Status">${status}</td>
+                <td class="optical-actions">
                     <select data-role="test-device" data-profile="${esc(p.id)}" aria-label="Perangkat untuk uji">${deviceSelect}</select>
                     <button class="btn btn-outline" data-action="test" data-profile="${esc(p.id)}" title="Uji pada perangkat terpilih" aria-label="Uji profil"><i class="fas fa-vial"></i></button>
                     <button class="btn btn-outline" data-action="toggle" data-profile="${esc(p.id)}" title="${p.is_active ? 'Nonaktifkan' : 'Aktifkan'}" aria-label="${p.is_active ? 'Nonaktifkan' : 'Aktifkan'}" ${!p.tested_at && !p.is_active ? 'disabled' : ''}><i class="fas fa-power-off"></i></button>
@@ -98,7 +98,7 @@
             : `❌ Tidak ada interface yang terbaca (${esc(s.rows)} baris). Periksa OID, indeks, dan satuan.`;
         const rows = result.rows || [];
         document.querySelector('#opticalTestTable tbody').innerHTML = rows.length
-            ? rows.map(r => `<tr><td>${esc(r.dir.toUpperCase())}</td><td>${esc(r.index)}</td><td>${esc(r.if_index ?? '—')}</td><td>${esc(r.if_name ?? '(tak terpetakan)')}</td><td>${esc(r.raw ?? '—')}</td><td><b>${r.dbm === null ? '—' : esc(r.dbm.toFixed(2))}</b></td></tr>`).join('')
+            ? rows.map(r => `<tr><td data-label="Arah">${esc(r.dir.toUpperCase())}</td><td data-label="Indeks">${esc(r.index)}</td><td data-label="ifIndex">${esc(r.if_index ?? '—')}</td><td data-label="ifName">${esc(r.if_name ?? '(tak terpetakan)')}</td><td data-label="Mentah">${esc(r.raw ?? '—')}</td><td data-label="dBm"><b>${r.dbm === null ? '—' : esc(r.dbm.toFixed(2))}</b></td></tr>`).join('')
               + (result.truncated ? '<tr><td colspan="6" class="empty">… dipotong 200 baris pertama</td></tr>' : '')
             : '<tr><td colspan="6" class="empty">OID tidak mengembalikan data</td></tr>';
     }
@@ -132,7 +132,11 @@
         fillSelect('op_index', state.index_types, p.index_type || 'if_index');
         fillSelect('op_unit', state.units, p.value_unit || 'dbm_0_01');
         document.getElementById('op_errors').textContent = '';
-        document.getElementById('opticalProfileModal').style.display = 'flex';
+        const modal = document.getElementById('opticalProfileModal');
+        // Modal dirender di dalam wadah konten, yang membentuk konteks tumpukan sendiri:
+        // z-index 2000-nya kalah dari footer & navigasi bawah HP. Pindahkan ke <body> sekali.
+        if (modal.parentElement !== document.body) document.body.appendChild(modal);
+        modal.style.display = 'flex';
     };
 
     window.opticalCloseProfile = function () {

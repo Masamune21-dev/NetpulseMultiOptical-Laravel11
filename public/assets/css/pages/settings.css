@@ -461,3 +461,137 @@
         padding: 14px 16px 18px;
     }
 }
+
+/* ===== Tab Vendor & Optik =====
+   Tab ini satu-satunya yang menumpuk beberapa kartu, dan bayangan offset tema
+   menimpa kartu berikutnya kalau tidak diberi jarak. Tabelnya juga lebar
+   (4–6 kolom), jadi di layar kecil tiap baris ditampilkan sebagai kartu
+   berlabel (data-label diisi optical-profiles.js). */
+#optical > .card + .card {
+    margin-top: 28px;
+}
+
+#optical .card > .help {
+    margin: 0;
+    padding: 14px 16px 0;
+}
+
+#optical .card > .table-responsive {
+    margin: 14px 16px 16px;
+}
+
+#opticalDeviceTable td:first-child,
+#opticalProfileTable td:first-child {
+    min-width: 180px;
+}
+
+#opticalDeviceTable td:first-child b {
+    white-space: nowrap;
+}
+
+#optical .optical-sub {
+    margin-top: 6px;
+    opacity: 0.8;
+}
+
+/* OID dibaca utuh; baru boleh patah di HP (lihat blok @media). */
+#opticalProfileTable .optical-oid {
+    white-space: nowrap;
+}
+
+#optical .optical-actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+    #optical .card > .table-responsive {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        margin: 12px;
+        overflow: visible;
+    }
+
+    #optical .table thead {
+        display: none;
+    }
+
+    #optical .table,
+    #optical .table tbody,
+    #optical .table tr,
+    #optical .table td {
+        display: block;
+        width: 100%;
+    }
+
+    #optical .table tr {
+        background: var(--surface);
+        border: 3px solid var(--border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        margin-bottom: 14px;
+        overflow: hidden;
+    }
+
+    #optical .table td {
+        border: 0;
+        min-width: 0;
+        padding: 6px 14px;
+    }
+
+    #optical .table td:first-child {
+        padding-top: 12px;
+    }
+
+    #optical .table td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        opacity: 0.65;
+        text-transform: uppercase;
+    }
+
+    #optical .table td small,
+    #opticalProfileTable .optical-oid,
+    #opticalDeviceTable td:first-child b {
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+
+    #optical .table td select {
+        width: 100%;
+    }
+
+    #optical .optical-actions {
+        border-top: 2px dashed var(--border);
+        margin-top: 6px;
+        padding: 10px 14px 12px;
+        text-align: left;
+    }
+}
+
+/* Kolom aksi tabel profil memuat pilih-perangkat + tombol; tanpa batas lebar,
+   dropdown mendorong tombol keluar dari tabel di layar 1280–1440 px. */
+#opticalProfileTable .optical-actions {
+    min-width: 240px;
+    white-space: normal;
+}
+
+#opticalProfileTable .optical-actions > * {
+    margin: 3px 0;
+    vertical-align: middle;
+}
+
+#opticalProfileTable .optical-actions select {
+    display: block;
+    margin-bottom: 6px;
+    max-width: 170px;
+    width: 100%;
+}
+
+#opticalProfileTable td:first-child {
+    min-width: 220px;
+}
