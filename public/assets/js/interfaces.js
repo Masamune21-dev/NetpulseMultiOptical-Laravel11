@@ -7,6 +7,7 @@
         perPage: 25,
         deviceId: '',
         status: 'all',
+        monitored: 'monitored',
         q: '',
     };
 
@@ -32,6 +33,13 @@
         const searchEl = document.getElementById('ifFilterSearch');
         const perPageEl = document.getElementById('ifPerPage');
         const resetEl = document.getElementById('ifFilterReset');
+        const monitoredEl = document.getElementById('ifFilterMonitored');
+
+        monitoredEl.addEventListener('change', () => {
+            state.monitored = monitoredEl.value;
+            state.page = 1;
+            fetchInterfaces();
+        });
 
         deviceEl.addEventListener('change', () => {
             state.deviceId = deviceEl.value;
@@ -64,6 +72,8 @@
         resetEl.addEventListener('click', () => {
             deviceEl.value = '';
             statusEl.value = 'all';
+            monitoredEl.value = 'monitored';
+            state.monitored = 'monitored';
             searchEl.value = '';
             perPageEl.value = '25';
             state.deviceId = '';
@@ -103,6 +113,7 @@
         params.set('per_page', state.perPage);
         if (state.deviceId) params.set('device_id', state.deviceId);
         if (state.status && state.status !== 'all') params.set('status', state.status);
+        if (state.monitored !== 'monitored') params.set('monitored', state.monitored);
         if (state.q) params.set('q', state.q);
 
         try {
@@ -149,8 +160,20 @@
             const type = r.interface_type ? `<span class="if-type-tag">${escapeHtml(r.interface_type)}</span>` : '';
             const description = ifAlias || ifDesc || '—';
 
+            const monitored = r.is_monitored !== false;
+            const label = `${r.device_name || 'Device ' + r.device_id} · ${r.if_name || 'if' + r.if_index}`;
+            const pmBtn = isAdmin()
+                ? `<button type="button" class="if-action-btn if-pm-btn" data-device="${r.device_id}" data-ifindex="${r.if_index}"
+                        data-monitored="${monitored ? '1' : '0'}" data-label="${escapeHtml(label)}"
+                        title="${monitored ? 'Tandai tidak dipakai' : 'Pantau lagi'}" aria-label="${monitored ? 'Tandai tidak dipakai' : 'Pantau lagi'}">
+                        <i class="fas ${monitored ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                   </button>`
+                : '';
+            const reason = !monitored && r.unmonitored_reason
+                ? `<div class="if-pm-reason" title="${escapeHtml(r.unmonitored_reason)}">${escapeHtml(r.unmonitored_reason)}</div>` : '';
+
             return `
-                <tr>
+                <tr class="${monitored ? '' : 'pm-row-off'}">
                     <td>
                         <div class="if-cell-device">
                             <span class="if-device-name">${deviceLabel}</span>
@@ -163,10 +186,10 @@
                             ${type}
                         </div>
                     </td>
-                    <td class="if-desc">${description}</td>
+                    <td class="if-desc">${description}${reason}</td>
                     <td class="if-opt-cell">${rxBadge}</td>
                     <td class="if-opt-cell">${txBadge}</td>
-                    <td class="if-status-cell">${statusBadge}</td>
+                    <td class="if-status-cell pm-keep">${statusBadge}${monitored ? '' : '<div class="if-pm-badges">' + window.portMonitoring.badge(r) + '</div>'}</td>
                     <td class="if-num">${speed}</td>
                     <td class="if-traffic">
                         <span class="if-traffic-line if-traffic-in"><i class="fas fa-arrow-down"></i> ${trafficIn}</span>
@@ -182,14 +205,24 @@
                                 data-device="${r.device_id}" data-ifindex="${r.if_index}">
                             <i class="fas fa-sliders"></i>
                         </button>
+                        ${pmBtn}
                     </td>
                 </tr>
             `;
         }).join('');
 
-        tbody.querySelectorAll('.if-action-btn:not(.if-thr-btn)').forEach(btn => {
+        tbody.querySelectorAll('.if-action-btn:not(.if-thr-btn):not(.if-pm-btn)').forEach(btn => {
             btn.addEventListener('click', () => {
                 openTrafficModal(parseInt(btn.dataset.device, 10), parseInt(btn.dataset.ifindex, 10));
+            });
+        });
+        tbody.querySelectorAll('.if-pm-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                window.portMonitoring.open({
+                    items: [{ device_id: parseInt(btn.dataset.device, 10), if_index: parseInt(btn.dataset.ifindex, 10), label: btn.dataset.label }],
+                    monitored: btn.dataset.monitored !== '1',
+                    onDone: () => fetchInterfaces(true),
+                });
             });
         });
         tbody.querySelectorAll('.if-thr-btn').forEach(btn => {
@@ -211,6 +244,10 @@
 
         countEl.textContent = `${total} interface${total === 1 ? '' : 's'}`;
         metaEl.textContent = total === 0 ? 'No data' : `Showing ${from}–${to} of ${total} (page ${page}/${last})`;
+        const hidden = meta.unmonitored_total ?? 0;
+        if (state.monitored === 'monitored' && hidden > 0) {
+            metaEl.textContent += ` · ${hidden} port tidak dipakai disembunyikan`;
+        }
     }
 
     function renderPager(meta) {

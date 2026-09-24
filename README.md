@@ -36,6 +36,7 @@ you the uptime numbers you need for SLA reports.
 | **Network map** | Leaflet map of nodes and links, with live link status, editable paths and a lock mode. |
 | **Alerts** | Web UI alert log, Telegram notifications and Firebase push to the mobile app, with maintenance-window mutes per device (or globally). |
 | **Multi-vendor optics** | Vendor auto-detection from `sysObjectID`, built-in drivers for MikroTik and Huawei, a standards-based ENTITY-SENSOR-MIB reader, and custom OID profiles with a built-in test for anything else. See [Supported devices](#supported-devices). |
+| **Unused ports** | Mark a port as *not in use*: it stops producing alerts, SLA events and statistics and drops out of the SLA report and dashboard, while its live status is still read so it gets an **Active again** badge if it comes back. The SLA page suggests candidates (ports down for more than 7 days). |
 | **Roles** | `admin`, `technician` and `viewer`. Viewers only ever see demo data. |
 | **Android app** | Flutter app for dashboards, monitoring, the map and push alerts. |
 
@@ -168,6 +169,22 @@ For release builds, provide your own signing key through `mobile/android/key.pro
 or the `NETPULSE_KEY_PROPERTIES` environment variable — the release build refuses to fall back
 to the debug key. Add your own `mobile/android/app/google-services.json` for push notifications.
 Neither file belongs in version control.
+
+## Retiring unused ports
+
+A port that went down because it is simply no longer used would otherwise stay in the SLA report
+forever and drag availability down. Admins can mark it as **not in use**:
+
+- from **Interfaces** or **Devices** (eye icon per port), or
+- from **SLA Report → Unused candidates**, which lists monitored ports that have been down without
+  interruption for more than 7 days (one click per port, or all at once).
+
+Marking a port closes its open SLA event at that moment, stops alerts, SLA events and optical/traffic
+samples for it, and hides it from the SLA report, exports, dashboard counts and the default
+interface lists (use the *Pantau* filter or `include_unmonitored=1` to show it). The poller still
+reads its status and RX, so a port that lights up again shows an **Active again** badge. Every change
+is recorded with who made it and an optional reason; switching monitoring back on resumes everything
+from the next poll.
 
 ## API
 

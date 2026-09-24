@@ -128,6 +128,8 @@ Route::middleware(['legacy.auth'])->group(function () {
         ->middleware('legacy.role:admin,technician,viewer');
     Route::get('/api/sla/events', [SlaController::class, 'events'])
         ->middleware('legacy.role:admin,technician,viewer');
+    Route::get('/api/sla/candidates', [SlaController::class, 'candidates'])
+        ->middleware('legacy.role:admin,technician,viewer');
     Route::get('/api/sla/export', [SlaController::class, 'export'])
         ->middleware('legacy.role:admin,technician,viewer');
     Route::get('/api/sla/export-pdf', [SlaController::class, 'exportPdf'])
@@ -148,6 +150,11 @@ Route::middleware(['legacy.auth'])->group(function () {
         ->middleware('legacy.role:admin');
     Route::delete('/api/interfaces/thresholds', [InterfaceThresholdsController::class, 'clear'])
         ->middleware('legacy.role:admin');
+    // Port "tidak dipakai": ubah hanya admin (dicek ulang di controller), riwayat boleh dilihat semua peran.
+    Route::post('/api/interfaces/monitoring', [\App\Http\Controllers\InterfaceMonitoringController::class, 'update'])
+        ->middleware('legacy.role:admin');
+    Route::get('/api/interfaces/monitoring/history', [\App\Http\Controllers\InterfaceMonitoringController::class, 'history'])
+        ->middleware('legacy.role:admin,technician,viewer');
 
     // Maintenance-window alert muting (per-device + global).
     Route::get('/api/alert_mutes', [AlertMutesController::class, 'index'])

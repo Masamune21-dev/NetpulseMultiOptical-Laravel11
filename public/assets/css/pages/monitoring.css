@@ -191,3 +191,8 @@
         padding: 8px;
     }
 }
+
+.mon-pm-toggle {
+    color: var(--text-muted);
+    margin-top: 6px;
+}

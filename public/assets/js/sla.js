@@ -1,7 +1,8 @@
 (function () {
     'use strict';
 
-    const state = { days: 30, deviceId: '', q: '', expanded: new Set() };
+    const state = { days: 30, deviceId: '', q: '', includeUnmonitored: false, expanded: new Set() };
+    let candidates = [];
     let searchTimer = null;
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -32,10 +33,17 @@
             searchTimer = setTimeout(() => { state.q = search.value.trim(); state.expanded.clear(); load(); }, 300);
         });
 
+        const inc = document.getElementById('slaIncludeUnmonitored');
+        if (inc) inc.addEventListener('change', () => { state.includeUnmonitored = inc.checked; state.expanded.clear(); load(); });
+
+        const markAll = document.getElementById('slaMarkAll');
+        if (markAll) markAll.addEventListener('click', () => markUnused(candidates));
+
         const exportUrl = (path) => {
             const params = new URLSearchParams({ days: state.days });
             if (state.deviceId) params.set('device_id', state.deviceId);
             if (state.q) params.set('q', state.q);
+            if (state.includeUnmonitored) params.set('include_unmonitored', '1');
             return `${path}?${params.toString()}`;
         };
         const csvBtn = document.getElementById('slaExport');
@@ -67,6 +75,9 @@
         const params = new URLSearchParams({ days: state.days });
         if (state.deviceId) params.set('device_id', state.deviceId);
         if (state.q) params.set('q', state.q);
+        if (state.includeUnmonitored) params.set('include_unmonitored', '1');
+
+        loadCandidates();
 
         fetch(`/api/sla?${params.toString()}`, { credentials: 'same-origin' })
             .then(r => r.json())
@@ -178,6 +189,69 @@
         if (h) parts.push(h + 'h');
         if (m) parts.push(m + 'm');
         return parts.join(' ') || '0m';
+    }
+
+    function loadCandidates() {
+        fetch('/api/sla/candidates', { credentials: 'same-origin' })
+            .then(r => r.json())
+            .then(json => {
+                candidates = (json && json.candidates) || [];
+                renderCandidates(json ? json.min_days : 7);
+            })
+            .catch(() => {});
+    }
+
+    function renderCandidates(minDays) {
+        const card = document.getElementById('slaCandidatesCard');
+        const body = document.getElementById('slaCandidatesBody');
+        const label = document.getElementById('slaCandidatesLabel');
+        const markAll = document.getElementById('slaMarkAll');
+        if (!card || !body) return;
+
+        card.hidden = candidates.length === 0;
+        if (!candidates.length) return;
+
+        const admin = window.roleUtils && window.roleUtils.isAdmin();
+        if (label) label.textContent = `${candidates.length} port · down > ${minDays} hari`;
+        if (markAll) {
+            markAll.hidden = !admin || candidates.length < 2;
+            markAll.innerHTML = `<i class="fas fa-eye-slash"></i> Tandai semua (${candidates.length})`;
+        }
+
+        body.innerHTML = candidates.map((c, idx) => {
+            const up = c.oper_status === 1 && c.rx_power !== null && c.rx_power > -40;
+            const now = up
+                ? '<span class="badge badge-success status-badge"><span class="status-dot"></span>UP</span>'
+                : '<span class="badge badge-danger status-badge"><span class="status-dot"></span>DOWN</span>';
+            const ifLabel = c.if_alias ? `${c.if_name} — ${c.if_alias}` : c.if_name;
+            return `
+                <tr>
+                    <td data-label="Device">${esc(c.device_name)}</td>
+                    <td data-label="Interface"><b>${esc(c.if_name)}</b>${c.if_alias ? `<div class="iface-comment">${esc(c.if_alias)}</div>` : ''}</td>
+                    <td data-label="Down sejak" style="text-align:center">${esc(c.down_at)}</td>
+                    <td data-label="Lama" style="text-align:center"><b>${esc(c.down_days)} hari</b></td>
+                    <td data-label="Status sekarang" style="text-align:center">${now}</td>
+                    <td class="sla-cand-action" style="text-align:center">
+                        ${admin ? `<button type="button" class="sla-export sla-export-sm sla-mark-one" data-idx="${idx}"
+                                title="Tandai ${esc(ifLabel)} tidak dipakai" aria-label="Tandai ${esc(ifLabel)} tidak dipakai">
+                            <i class="fas fa-eye-slash"></i> Tidak dipakai</button>` : ''}
+                    </td>
+                </tr>`;
+        }).join('');
+
+        body.querySelectorAll('.sla-mark-one').forEach(btn => {
+            btn.addEventListener('click', () => markUnused([candidates[parseInt(btn.dataset.idx, 10)]]));
+        });
+    }
+
+    function markUnused(list) {
+        const items = (list || []).filter(Boolean).map(c => ({
+            device_id: c.device_id,
+            if_index: c.if_index,
+            label: `${c.device_name} · ${c.if_name}${c.if_alias ? ' — ' + c.if_alias : ''}`,
+        }));
+        if (!items.length) return;
+        window.portMonitoring.open({ items, monitored: false, onDone: () => load() });
     }
 
     function esc(s) {

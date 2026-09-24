@@ -306,6 +306,7 @@
     </footer>
 
     <script src="{{ asset('assets/js/script.js') }}?v={{ filemtime(public_path('assets/js/script.js')) }}"></script>
+    <script src="{{ asset('assets/js/port-monitoring.js') }}?v={{ filemtime(public_path('assets/js/port-monitoring.js')) }}"></script>
     <script>
         function toggleEcosystemMenu() {
             var m = document.getElementById('ecosystemMenu');

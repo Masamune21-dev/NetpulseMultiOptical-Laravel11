@@ -26,6 +26,14 @@
                 </select>
             </div>
             <div class="form-group">
+                <label><i class="fas fa-eye"></i> &nbsp;Pantau</label>
+                <select id="ifFilterMonitored" class="monitoring-select">
+                    <option value="monitored" selected>Dipantau</option>
+                    <option value="all">Semua port</option>
+                    <option value="unmonitored">Tidak dipakai</option>
+                </select>
+            </div>
+            <div class="form-group">
                 <label><i class="fas fa-magnifying-glass"></i> &nbsp;Search</label>
                 <input type="text" id="ifFilterSearch" class="monitoring-select" placeholder="Name, alias, description...">
             </div>

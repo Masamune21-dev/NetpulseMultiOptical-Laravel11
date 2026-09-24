@@ -403,6 +403,9 @@ async function discoverSelectedInterfaces(silent = false) {
     }
 }
 
+// Port "tidak dipakai" disembunyikan dari tabel kecuali kotak centang dinyalakan.
+let devShowUnmonitored = false;
+
 function loadInterfaces(deviceId) {
     const box = document.getElementById('monitoringContent');
     box.innerHTML = '<div class="alert info">📡 Loading interface data...</div>';
@@ -423,13 +426,22 @@ function loadInterfaces(deviceId) {
                 return;
             }
 
-            const sfp = data.filter(i => Number(i.is_sfp) === 1)
+            const allSfp = data.filter(i => Number(i.is_sfp) === 1)
                 .sort((a, b) => a.if_index - b.if_index);
+            const hiddenCount = allSfp.filter(i => i.is_monitored === false).length;
+            const sfp = devShowUnmonitored ? allSfp : allSfp.filter(i => i.is_monitored !== false);
             const other = data.filter(i => Number(i.is_sfp) === 0);
+            const admin = window.roleUtils && window.roleUtils.isAdmin();
 
             let html = `
 <div class="table-responsive">
-<h3>🔦 SFP / QSFP Interfaces (${sfp.length})</h3>
+<div class="dev-pm-head">
+    <h3>🔦 SFP / QSFP Interfaces (${sfp.length})</h3>
+    <label class="pm-toggle">
+        <input type="checkbox" id="devShowUnmonitored" ${devShowUnmonitored ? 'checked' : ''}>
+        Tampilkan port tidak dipakai${hiddenCount ? ` (${hiddenCount})` : ''}
+    </label>
+</div>
 <table class="table">
 <thead>
 <tr>
@@ -440,6 +452,7 @@ function loadInterfaces(deviceId) {
     <th>RX (dBm)</th>
     <th>Loss</th>
     <th>Status</th>
+    ${admin ? '<th>Pantau</th>' : ''}
 </tr>
 </thead>
 <tbody>`;
@@ -504,12 +517,28 @@ function loadInterfaces(deviceId) {
                     lossHtml = `<b style="color:${c}">${loss.toFixed(2)}</b>`;
                 }
 
+                const monitored = i.is_monitored !== false;
+                const pmRow = {
+                    is_monitored: monitored,
+                    active_again: !monitored && Number(i.oper_status) === 1 && Number.isFinite(rx) && rx > -40,
+                };
+                const pmCell = admin ? `
+    <td class="text-center pm-keep">
+        <button type="button" class="btn btn-outline btn-sm dev-pm-btn"
+                data-device="${escHtml(deviceId)}" data-ifindex="${escHtml(i.if_index)}"
+                data-monitored="${monitored ? '1' : '0'}" data-label="${escHtml(i.if_name + (i.if_alias ? ' — ' + i.if_alias : ''))}"
+                title="${monitored ? 'Tandai tidak dipakai' : 'Pantau lagi'}" aria-label="${monitored ? 'Tandai tidak dipakai' : 'Pantau lagi'}">
+            <i class="fas ${monitored ? 'fa-eye-slash' : 'fa-eye'}"></i>
+        </button>
+    </td>` : '';
+
                 html += `
-<tr>
+<tr class="${monitored ? '' : 'pm-row-off'}">
     <td class="text-center"><code>${escHtml(i.if_index)}</code></td>
     <td>
         <b>${escHtml(i.if_name)}</b>
         ${i.if_alias ? `<div class="iface-comment">${escHtml(i.if_alias)}</div>` : ''}
+        ${monitored ? '' : `<div class="dev-pm-badges">${window.portMonitoring.badge(pmRow)}</div>`}
     </td>
     <td class="text-center">
     <span class="interface-badge ${i.interface_type === 'QSFP+' ? 'badge-qsfp' : 'badge-sfp'}">
@@ -521,7 +550,7 @@ function loadInterfaces(deviceId) {
     <td class="text-center">${lossHtml}</td>
     <td class="text-center">
         <span class="status-badge ${statusClass}">${escHtml(status)}</span>
-    </td>
+    </td>${pmCell}
 </tr>`;
             });
 
@@ -546,6 +575,21 @@ function loadInterfaces(deviceId) {
             }
 
             box.innerHTML = html;
+
+            const toggle = document.getElementById('devShowUnmonitored');
+            if (toggle) toggle.addEventListener('change', () => {
+                devShowUnmonitored = toggle.checked;
+                loadInterfaces(deviceId);
+            });
+            box.querySelectorAll('.dev-pm-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    window.portMonitoring.open({
+                        items: [{ device_id: parseInt(btn.dataset.device, 10), if_index: parseInt(btn.dataset.ifindex, 10), label: btn.dataset.label }],
+                        monitored: btn.dataset.monitored !== '1',
+                        onDone: () => loadInterfaces(deviceId),
+                    });
+                });
+            });
         })
         .catch(err => {
             console.error(err);

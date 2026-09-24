@@ -177,3 +177,23 @@
         width: 100%;
     }
 }
+
+/* Port tidak dipakai */
+.dev-pm-head {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    justify-content: space-between;
+}
+
+.dev-pm-head .pm-toggle {
+    color: var(--text-muted);
+}
+
+.dev-pm-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}

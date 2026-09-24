@@ -50,11 +50,19 @@ class MonitoringController extends Controller
         }
 
         $rows = DB::table('interfaces')
-            ->select(['if_index', 'if_name', 'if_alias', 'tx_power', 'rx_power'])
+            ->select(['if_index', 'if_name', 'if_alias', 'tx_power', 'rx_power', 'is_monitored'])
             ->where('device_id', $deviceId)
             ->where('is_sfp', 1)
+            // Port tidak dipakai disembunyikan kecuali diminta (?include_unmonitored=1).
+            ->when(!$request->boolean('include_unmonitored'), fn ($q) => $q->where(function ($w) {
+                $w->whereNull('is_monitored')->orWhere('is_monitored', 1);
+            }))
             ->orderBy('if_index')
-            ->get();
+            ->get()
+            ->map(function ($r) {
+                $r->is_monitored = (int) ($r->is_monitored ?? 1) === 1;
+                return $r;
+            });
 
         return response()->json(['success' => true, 'data' => $rows]);
     }

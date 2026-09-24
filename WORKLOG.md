@@ -4,6 +4,43 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Created: Port "Tidak Dipakai" (keluar dari SLA, alert, dan dashboard)
+
+- **Created**: fitur menandai port tidak dipakai di atas kolom lama `interfaces.is_monitored` (bawaan 1,
+  sebelumnya hanya dibaca peta). Tabel baru `interface_monitoring_changes` (riwayat: siapa, kapan,
+  alasan). `InterfaceMonitoringController`: `POST /api/interfaces/monitoring` (khusus admin — middleware
+  `legacy.role:admin` + cek ulang `UserState`, maks 500 port, alasan ≤ 255) dan
+  `GET /api/interfaces/monitoring/history`. Mematikan pantauan menutup kejadian SLA yang masih terbuka
+  pada saat itu; perubahan ke status yang sama tidak dicatat dua kali.
+- **Changed (poller)**: `InterfaceDiscovery` membaca `is_monitored` dari query `prevRows` yang sudah ada
+  (tanpa query tambahan). Port tidak dipakai: tanpa alert, tanpa kejadian SLA, tanpa `interface_stats` /
+  `interface_traffic_stats` (rollup ikut bersih), state alert-nya dibuang supaya saat dipantau lagi
+  tidak memicu alert transisi lama; baris `interfaces` (status, RX/TX, last_seen) tetap diperbarui.
+  `optical:degradation` mengecualikan port tidak dipakai (rollup harian lamanya masih ada).
+- **Changed (laporan & API)**: ringkasan SLA + ekspor CSV/PDF mengecualikan port tidak dipakai kecuali
+  `include_unmonitored=1`; riwayat per-interface tetap bisa dibuka. Endpoint baru `GET /api/sla/candidates`
+  (port dipantau yang down tanpa henti > 7 hari, `SlaController::UNUSED_CANDIDATE_DAYS`). KPI dashboard
+  web & API v1, daftar interface web (`monitored=monitored|all|unmonitored`, `meta.unmonitored_total`,
+  field `is_monitored`, alasan, `active_again`), monitoring web & API v1, dan `/api/v1/interfaces`
+  menyembunyikan port tidak dipakai secara bawaan (bentuk respons lama tetap, hanya menambah field).
+- **Created (UI)**: `public/assets/js/port-monitoring.js` — modal alasan milik tema (dipasang di `<body>`,
+  Escape/klik luar menutup, tanpa `window.confirm`), lencana "Tidak dipakai" / "Aktif kembali".
+  Interfaces: filter "Pantau", tombol per port untuk admin, baris redup + alasan, jumlah yang
+  disembunyikan. Monitoring & Devices: kotak centang "Tampilkan port tidak dipakai". SLA: kotak centang
+  "Sertakan port tidak dipakai" + panel "Kandidat tidak dipakai" (per port / tandai semua; kartu di HP).
+- **Fixed (sempat terjadi)**: saat penyuntingan, komentar SQL berkutip ganda di `CheckOpticalDegradation`
+  memutus string PHP beberapa detik; langsung dibetulkan, tidak ada parse error tercatat di log dan
+  polling tetap berjalan. Kotak centang baru sempat melebarkan halaman Monitoring di HP (gaya input
+  global tema) — kini `.pm-toggle` memulihkan ukuran kotak centang. Tombol per port di Interfaces sempat
+  ikut membuka modal trafik (selektor lama `.if-action-btn`) — dikecualikan.
+- **Notes**: test baru `tests/Feature/InterfaceMonitoringTest.php` (8): admin-only, tutup kejadian +
+  riwayat, anti-duplikat, validasi, kandidat, daftar interface web, monitoring web, monitoring API v1.
+  Tidak teruji otomatis: jalur poller (fungsi SNMP global) dan ringkasan SLA (fungsi khusus MySQL) —
+  diperiksa lewat review kode. Suite 48 lulus. Migrasi dijalankan di produksi; route/view/config cache
+  diperbarui. Diverifikasi visual (1440/1280/390, tanpa galat konsol, tanpa gulir samping) dengan akun
+  admin sementara acak yang sudah dihapus; **tidak ada port asli yang ditandai** (is_monitored=0: 0,
+  riwayat: 0).
+
 ## 2026-09-24 — Fixed: SLA Report Menghitung Interface yang Sudah UP sebagai Down
 
 - **Fixed (akar masalah)**: `interface_down_events` hanya ditutup saat poller melihat transisi

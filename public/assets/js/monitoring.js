@@ -69,26 +69,34 @@ function loadDevices() {
         });
 }
 
-deviceSelect.addEventListener('change', () => {
+// Port "tidak dipakai" disembunyikan dari pilihan kecuali kotak centang dinyalakan.
+const showUnmonitoredEl = document.getElementById('showUnmonitored');
+
+function loadInterfaceOptions() {
     stopAutoRefresh();
     interfaceSelect.innerHTML =
         '<option value="">-- Pilih Interface --</option>';
 
     if (!deviceSelect.value) return;
 
-    fetch(`api/monitoring_interfaces?device_id=${deviceSelect.value}`)
+    const extra = showUnmonitoredEl && showUnmonitoredEl.checked ? '&include_unmonitored=1' : '';
+    fetch(`api/monitoring_interfaces?device_id=${encodeURIComponent(deviceSelect.value)}${extra}`)
         .then(r => r.json())
         .then(ifs => {
             ifs.forEach(i => {
+                const off = i.is_monitored === false ? ' (tidak dipakai)' : '';
                 interfaceSelect.innerHTML += `
                     <option value="${escHtml(i.if_index)}"
                             data-name="${escHtml(i.if_name)}"
                             data-alias="${escHtml(i.if_alias || '')}">
-                        ${escHtml(i.if_name)}${i.if_alias ? ' — ' + escHtml(i.if_alias) : ''}
+                        ${escHtml(i.if_name)}${i.if_alias ? ' — ' + escHtml(i.if_alias) : ''}${escHtml(off)}
                     </option>`;
             });
         });
-});
+}
+
+deviceSelect.addEventListener('change', loadInterfaceOptions);
+if (showUnmonitoredEl) showUnmonitoredEl.addEventListener('change', loadInterfaceOptions);
 
 interfaceSelect.addEventListener('change', () => {
     const opt = interfaceSelect.selectedOptions[0];

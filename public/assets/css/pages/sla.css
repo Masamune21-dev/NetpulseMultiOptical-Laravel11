@@ -169,3 +169,67 @@
     font-size: 0.68rem;
     padding: 5px 10px;
 }
+
+/* Kandidat "tidak dipakai" — kartu kedua di halaman ini, beri jarak supaya bayangan
+   offset kartu pertama tidak menimpanya. */
+.sla-candidates-card {
+    margin-top: 28px;
+}
+
+.sla-candidates-card .mon-chart-card__head {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.sla-candidates-help {
+    font-size: 0.8rem;
+    line-height: 1.55;
+    margin: 0;
+    padding: 0 18px 12px;
+}
+
+.sla-pm-toggle {
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+@media (max-width: 720px) {
+    #slaCandidatesTable thead {
+        display: none;
+    }
+
+    #slaCandidatesTable,
+    #slaCandidatesTable tbody,
+    #slaCandidatesTable tr,
+    #slaCandidatesTable td {
+        display: block;
+        width: 100%;
+    }
+
+    #slaCandidatesTable tr {
+        border-bottom: 3px solid var(--border);
+        padding: 8px 0;
+    }
+
+    #slaCandidatesTable td {
+        border: 0;
+        padding: 4px 14px;
+        text-align: left !important;
+    }
+
+    #slaCandidatesTable td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.66rem;
+        font-weight: 700;
+        opacity: 0.65;
+        text-transform: uppercase;
+    }
+
+    .sla-cand-action {
+        padding-top: 8px !important;
+    }
+}

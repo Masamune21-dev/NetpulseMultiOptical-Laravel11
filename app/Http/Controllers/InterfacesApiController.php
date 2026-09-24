@@ -40,6 +40,12 @@ class InterfacesApiController extends Controller
         if (in_array('interface_type', $columns, true)) {
             $select[] = 'interface_type';
         }
+        if (in_array('oper_status', $columns, true)) {
+            $select[] = 'oper_status';
+        }
+        if (in_array('is_monitored', $columns, true)) {
+            $select[] = 'is_monitored';
+        }
 
         $rows = DB::table('interfaces')
             ->select($select)
@@ -52,6 +58,9 @@ class InterfacesApiController extends Controller
             $row = (array) $row;
             if (isset($row['is_sfp'])) {
                 $row['is_sfp'] = (int) $row['is_sfp'];
+            }
+            if (array_key_exists('is_monitored', $row)) {
+                $row['is_monitored'] = (int) ($row['is_monitored'] ?? 1) === 1;
             }
             if (array_key_exists('rx_power', $row)) {
                 $row['rx_power'] = $row['rx_power'] !== null ? (float) $row['rx_power'] : null;

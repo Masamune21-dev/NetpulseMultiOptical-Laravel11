@@ -45,6 +45,18 @@ class InterfacesListApiController extends Controller
             $base->where('interfaces.device_id', $deviceId);
         }
 
+        // Port tidak dipakai (is_monitored = 0) disembunyikan secara bawaan.
+        // monitored=all menampilkan semua, monitored=unmonitored hanya yang tidak dipakai.
+        $monitoredFilter = strtolower(trim((string) $request->query('monitored', 'monitored')));
+        $unmonitoredTotal = (clone $base)->where('interfaces.is_monitored', 0)->count('interfaces.id');
+        if ($monitoredFilter === 'unmonitored') {
+            $base->where('interfaces.is_monitored', 0);
+        } elseif ($monitoredFilter !== 'all') {
+            $base->where(function ($sub) {
+                $sub->whereNull('interfaces.is_monitored')->orWhere('interfaces.is_monitored', 1);
+            });
+        }
+
         if ($status === 'up') {
             $base->where('interfaces.oper_status', 1);
         } elseif ($status === 'down') {
@@ -88,6 +100,7 @@ class InterfacesListApiController extends Controller
                 'interfaces.out_rate_bps',
                 'interfaces.last_seen',
                 'interfaces.interface_type',
+                'interfaces.is_monitored',
             ])
             ->orderBy('snmp_devices.device_name')
             ->orderBy('interfaces.if_index')
@@ -95,8 +108,21 @@ class InterfacesListApiController extends Controller
             ->limit($perPage)
             ->get();
 
-        $data = $rows->map(function ($r) {
+        $reasons = InterfaceMonitoringController::latestReasons(
+            $rows->filter(fn ($r) => (int) ($r->is_monitored ?? 1) === 0)
+                ->map(fn ($r) => [(int) $r->device_id, (int) $r->if_index])->values()->all()
+        );
+
+        $data = $rows->map(function ($r) use ($reasons) {
+            $monitored = (int) ($r->is_monitored ?? 1) === 1;
+            $why = $reasons[$r->device_id . ':' . $r->if_index] ?? null;
             return [
+                'is_monitored' => $monitored,
+                'unmonitored_reason' => $monitored ? null : ($why['reason'] ?? null),
+                'unmonitored_by' => $monitored ? null : ($why['changed_by'] ?? null),
+                'unmonitored_at' => $monitored ? null : ($why['changed_at'] ?? null),
+                // Port tidak dipakai yang kini hidup lagi dengan sinyal: patut dicek.
+                'active_again' => !$monitored && (int) $r->oper_status === 1 && $r->rx_power !== null && (float) $r->rx_power > -40,
                 'id' => (int) $r->id,
                 'device_id' => (int) $r->device_id,
                 'device_name' => $r->device_name !== null ? (string) $r->device_name : null,
@@ -124,6 +150,7 @@ class InterfacesListApiController extends Controller
                 'page' => $page,
                 'per_page' => $perPage,
                 'last_page' => $lastPage,
+                'unmonitored_total' => $unmonitoredTotal,
             ],
         ]);
     }

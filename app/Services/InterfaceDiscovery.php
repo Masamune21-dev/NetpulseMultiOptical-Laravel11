@@ -203,9 +203,18 @@ class InterfaceDiscovery
         // Snapshot of previous counters for delta-based rate calc (only need for SFP).
         $prevCounters = [];
         $prevRows = DB::table('interfaces')
-            ->select(['if_index', 'in_octets', 'out_octets', 'counters_polled_at'])
+            ->select(['if_index', 'in_octets', 'out_octets', 'counters_polled_at', 'is_monitored'])
             ->where('device_id', $deviceId)
             ->get();
+        // Port yang ditandai "tidak dipakai" (is_monitored = 0): status & RX tetap
+        // diperbarui di tabel interfaces, tetapi tanpa alert, kejadian SLA, dan sampel
+        // statistik (rollup & deteksi degradasi ikut bersih karena bersumber dari sini).
+        $unmonitored = [];
+        foreach ($prevRows as $row) {
+            if ($row->is_monitored !== null && (int) $row->is_monitored === 0) {
+                $unmonitored[(int) $row->if_index] = true;
+            }
+        }
         foreach ($prevRows as $row) {
             $prevCounters[(int) $row->if_index] = [
                 'in_octets' => $row->in_octets !== null ? (int) $row->in_octets : null,
@@ -332,7 +341,15 @@ class InterfaceDiscovery
                 }
             }
 
-            if ($isCli && $isSfp) {
+            $monitored = !isset($unmonitored[$ifIdx]);
+            if (!$monitored && $isCli && isset($alertState[$deviceId . ':' . $ifIdx])) {
+                // Lupakan state alert port yang tidak dipakai: saat dipantau lagi ia mulai
+                // bersih, bukan memicu alert "UP/DOWN" dari keadaan berminggu-minggu lalu.
+                unset($alertState[$deviceId . ':' . $ifIdx]);
+                $alertStateDirty = true;
+            }
+
+            if ($isCli && $isSfp && $monitored) {
                 $deviceLabel = trim(($device->device_name ?? '') . ' (' . $ip . ')');
                 $ifaceComment = $alias !== '' ? $alias : ($desc !== '' ? $desc : '');
                 $ifaceLabel = $ifaceComment !== '' ? "{$name} ({$ifaceComment})" : $name;
@@ -520,7 +537,7 @@ class InterfaceDiscovery
                 $sfpCount++;
             }
 
-            if ($isSfp && ($inOct !== null || $outOct !== null)) {
+            if ($isSfp && $monitored && ($inOct !== null || $outOct !== null)) {
                 DB::table('interface_traffic_stats')->insert([
                     'device_id' => $deviceId,
                     'if_index' => $ifIdx,
@@ -532,7 +549,7 @@ class InterfaceDiscovery
                 ]);
             }
 
-            if ($isSfp && $rx !== null) {
+            if ($isSfp && $monitored && $rx !== null) {
                 $loss = ($tx !== null && $rx !== null) ? ($tx - $rx) : null;
                 DB::table('interface_stats')->insert([
                     'device_id' => $deviceId,

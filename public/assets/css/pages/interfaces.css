@@ -6,7 +6,7 @@
 
 /* Filter row: 4 columns (device, status, search, reset) */
 .if-filter-row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 1.6fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 0.8fr) minmax(0, 1.4fr) auto;
 }
 
 .if-filter-reset-group {
@@ -697,4 +697,23 @@
 
 @media (max-width: 640px) {
     .if-thr-form { grid-template-columns: 1fr; }
+}
+
+/* Port tidak dipakai */
+.if-pm-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+}
+
+.if-pm-reason {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-style: italic;
+    margin-top: 3px;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

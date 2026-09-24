@@ -58,6 +58,13 @@ class InterfacesController extends Controller
             $base->where('interfaces.device_id', $deviceId);
         }
 
+        // Port yang ditandai tidak dipakai tidak ikut, kecuali ?include_unmonitored=1.
+        if (!$request->boolean('include_unmonitored')) {
+            $base->where(function ($sub) {
+                $sub->whereNull('interfaces.is_monitored')->orWhere('interfaces.is_monitored', 1);
+            });
+        }
+
         if ($status === 'up') {
             $base->where('interfaces.oper_status', 1);
         } elseif ($status === 'down') {

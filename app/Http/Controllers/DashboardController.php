@@ -60,8 +60,8 @@ class DashboardController extends Controller
         $counts = DB::selectOne("
             SELECT
                 (SELECT COUNT(*) FROM snmp_devices WHERE is_active = 1)                        AS device_count,
-                (SELECT COUNT(*) FROM interfaces)                                               AS interface_count,
-                (SELECT COUNT(*) FROM interfaces WHERE is_sfp = 1 AND tx_power IS NOT NULL)    AS sfp_count
+                (SELECT COUNT(*) FROM interfaces WHERE COALESCE(is_monitored, 1) = 1)                                               AS interface_count,
+                (SELECT COUNT(*) FROM interfaces WHERE is_sfp = 1 AND COALESCE(is_monitored, 1) = 1 AND tx_power IS NOT NULL)    AS sfp_count
         ");
 
         $badOpticalCount = 0;
@@ -69,7 +69,7 @@ class DashboardController extends Controller
             $badRow = DB::selectOne("
                 SELECT COUNT(*) AS bad_optical_count
                 FROM interfaces i
-                WHERE i.is_sfp = 1
+                WHERE i.is_sfp = 1 AND COALESCE(i.is_monitored, 1) = 1
                   AND i.oper_status IS NOT NULL
                   AND i.oper_status <> 1
                   AND EXISTS (
@@ -107,7 +107,7 @@ class DashboardController extends Controller
                 SUM(CASE WHEN oper_status = 1 THEN 1 ELSE 0 END) AS up_count,
                 SUM(CASE WHEN oper_status <> 1 THEN 1 ELSE 0 END) AS down_count
             FROM interfaces
-            WHERE is_sfp = 1 AND oper_status IS NOT NULL
+            WHERE is_sfp = 1 AND COALESCE(is_monitored, 1) = 1 AND oper_status IS NOT NULL
         ");
 
         $ifUpCount   = (int) ($ifStatusRow->up_count   ?? 0);
@@ -162,7 +162,7 @@ class DashboardController extends Controller
                    d.device_name, d.ip_address
             FROM interfaces i
             JOIN snmp_devices d ON d.id = i.device_id
-            WHERE i.is_sfp = 1
+            WHERE i.is_sfp = 1 AND COALESCE(i.is_monitored, 1) = 1
               AND i.rx_power IS NOT NULL
               AND i.tx_power IS NOT NULL
             ORDER BY i.rx_power ASC

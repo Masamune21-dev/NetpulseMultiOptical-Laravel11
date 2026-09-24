@@ -21,6 +21,9 @@
                 <select id="interfaceSelect" class="monitoring-select">
                     <option value="">— Pilih Interface —</option>
                 </select>
+                <label class="pm-toggle mon-pm-toggle">
+                    <input type="checkbox" id="showUnmonitored"> Tampilkan port tidak dipakai
+                </label>
             </div>
             <div class="form-group">
                 <label><i class="fas fa-clock"></i> &nbsp;Range Waktu</label>

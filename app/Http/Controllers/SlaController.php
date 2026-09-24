@@ -36,6 +36,11 @@ class SlaController extends Controller
             $like = '%' . $q . '%';
             array_push($bindings, $like, $like, $like);
         }
+        // Port yang ditandai tidak dipakai keluar dari laporan (dan ekspornya), kecuali
+        // diminta eksplisit. Riwayat per-interface tetap bisa dibuka lewat events().
+        if (!$request->boolean('include_unmonitored')) {
+            $where[] = 'NOT EXISTS (SELECT 1 FROM interfaces i WHERE i.device_id = interface_down_events.device_id AND i.if_index = interface_down_events.if_index AND i.is_monitored = 0)';
+        }
         $whereSql = implode(' AND ', $where);
 
         $rows = DB::select("
@@ -168,6 +173,51 @@ class SlaController extends Controller
             $parts[] = $m . 'm';
         }
         return $parts ? implode(' ', $parts) : '0m';
+    }
+
+    /** Port yang down terus-menerus lebih lama dari ini diusulkan untuk ditandai tidak dipakai. */
+    public const UNUSED_CANDIDATE_DAYS = 7;
+
+    /**
+     * GET /api/sla/candidates — port yang masih dipantau tetapi down tanpa henti lebih dari
+     * UNUSED_CANDIDATE_DAYS hari (kejadian terbuka yang sudah lama). Kandidat "tidak dipakai".
+     */
+    public function candidates(Request $request)
+    {
+        $minDays = self::UNUSED_CANDIDATE_DAYS;
+        $cutoff = now()->subDays($minDays);
+
+        $rows = DB::table('interface_down_events as e')
+            ->join('interfaces as i', function ($j) {
+                $j->on('i.device_id', '=', 'e.device_id')->on('i.if_index', '=', 'e.if_index');
+            })
+            ->leftJoin('snmp_devices as d', 'd.id', '=', 'e.device_id')
+            ->whereNull('e.up_at')
+            ->where('e.down_at', '<=', $cutoff)
+            ->where(function ($q) {
+                $q->whereNull('i.is_monitored')->orWhere('i.is_monitored', 1);
+            })
+            ->orderBy('e.down_at')
+            ->get([
+                'e.device_id', 'e.if_index', 'e.down_at',
+                'i.if_name', 'i.if_alias', 'i.oper_status', 'i.rx_power', 'i.last_seen',
+                'd.device_name',
+            ]);
+
+        $now = time();
+        $data = $rows->map(fn ($r) => [
+            'device_id' => (int) $r->device_id,
+            'if_index' => (int) $r->if_index,
+            'device_name' => $r->device_name ?? ('Device #' . $r->device_id),
+            'if_name' => $r->if_name,
+            'if_alias' => $r->if_alias,
+            'oper_status' => $r->oper_status !== null ? (int) $r->oper_status : null,
+            'rx_power' => is_numeric($r->rx_power) ? (float) $r->rx_power : null,
+            'down_at' => (string) $r->down_at,
+            'down_days' => (int) floor(($now - strtotime((string) $r->down_at)) / 86400),
+        ])->values();
+
+        return response()->json(['success' => true, 'min_days' => $minDays, 'candidates' => $data]);
     }
 
     /** GET /api/sla/events — each down event for one interface over the period. */

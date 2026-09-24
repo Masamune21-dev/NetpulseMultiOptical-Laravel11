@@ -58,6 +58,13 @@ class CheckOpticalDegradation extends Command
                    COUNT(CASE WHEN bucket >= (CURDATE() - INTERVAL {$bfrom} DAY) AND bucket < (CURDATE() - INTERVAL {$bto} DAY) AND rx_max > {$minRx} THEN 1 END) AS base_days
             FROM interface_stats_daily
             WHERE bucket >= (CURDATE() - INTERVAL {$bfrom} DAY)
+              -- port tidak dipakai (is_monitored = 0) tidak dinilai; rollup lamanya masih ada
+              AND NOT EXISTS (
+                  SELECT 1 FROM interfaces i
+                  WHERE i.device_id = interface_stats_daily.device_id
+                    AND i.if_index = interface_stats_daily.if_index
+                    AND i.is_monitored = 0
+              )
             GROUP BY device_id, if_index
             HAVING recent_days >= 1 AND base_days >= {$minBaseDays}
         ");

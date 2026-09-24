@@ -19,6 +19,9 @@
         <input type="text" id="slaSearch" class="sla-input" placeholder="Search interface / alias…">
         <button type="button" id="slaExport" class="sla-export"><i class="fas fa-file-csv"></i> CSV</button>
         <button type="button" id="slaExportPdf" class="sla-export"><i class="fas fa-file-pdf"></i> PDF</button>
+        <label class="pm-toggle sla-pm-toggle">
+            <input type="checkbox" id="slaIncludeUnmonitored"> Sertakan port tidak dipakai
+        </label>
     </div>
 
     <div class="sla-stats">
@@ -51,6 +54,41 @@
                 <tbody id="slaTableBody">
                     <tr><td colspan="7" class="if-empty"><i class="fas fa-circle-notch fa-spin"></i> Loading…</td></tr>
                 </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- Port yang down terus-menerus lama: kemungkinan sudah tidak dipakai --}}
+    <div class="mon-chart-card if-table-card sla-candidates-card" id="slaCandidatesCard" hidden>
+        <div class="mon-chart-card__head">
+            <div class="mon-chart-card__title">
+                <i class="fas fa-eye-slash" style="color:var(--primary)"></i>
+                Kandidat tidak dipakai
+                <span id="slaCandidatesLabel" class="sla-period"></span>
+            </div>
+            <button type="button" id="slaMarkAll" class="sla-export" hidden>
+                <i class="fas fa-eye-slash"></i> Tandai semua
+            </button>
+        </div>
+        <p class="sla-candidates-help">
+            Port di bawah masih dipantau tetapi down tanpa henti cukup lama, sehingga terus menurunkan
+            angka SLA. Kalau port itu memang sudah tidak dipakai, tandai supaya keluar dari laporan,
+            dashboard, dan alert. Status &amp; RX-nya tetap dibaca: port yang hidup lagi akan diberi
+            tanda <b>Aktif kembali</b> di halaman Interfaces.
+        </p>
+        <div class="if-table-wrap">
+            <table class="table" id="slaCandidatesTable">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>Interface</th>
+                        <th style="text-align:center">Down sejak</th>
+                        <th style="text-align:center">Lama</th>
+                        <th style="text-align:center">Status sekarang</th>
+                        <th style="text-align:center"></th>
+                    </tr>
+                </thead>
+                <tbody id="slaCandidatesBody"></tbody>
             </table>
         </div>
     </div>

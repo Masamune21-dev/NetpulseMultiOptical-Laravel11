@@ -698,6 +698,26 @@ OID wajib numerik minimal 9 komponen (tidak bisa walk subtree besar seperti `1.3
 statistik/alert. `--mode=legacy` (jalur lama) vs `--mode=driver`, lalu
 `--compare lama.json baru.json` (toleransi default 0,5 dB karena pembacaan hidup berfluktuasi).
 
+## Port Tidak Dipakai
+
+Kolom lama `interfaces.is_monitored` (bawaan `1`) kini dipakai sungguhan:
+
+| | Port dipantau (`1`) | Port tidak dipakai (`0`) |
+|---|---|---|
+| Status, RX/TX, `last_seen` di `interfaces` | diperbarui | **tetap diperbarui** (untuk lencana "Aktif kembali") |
+| Alert down/up/warning, degradasi | ya | tidak |
+| `interface_down_events` (SLA) | ya | tidak; kejadian terbuka ditutup saat ditandai |
+| `interface_stats` / `interface_traffic_stats` / rollup | ya | tidak |
+| Laporan SLA + ekspor, hitungan dashboard, daftar interface & API v1 | ikut | disembunyikan (kecuali `include_unmonitored=1` / filter "Pantau") |
+
+- Ubah: `POST /api/interfaces/monitoring` `{items:[{device_id,if_index}], monitored, reason?}` — khusus
+  admin (middleware + cek ulang di controller). Riwayat: `GET /api/interfaces/monitoring/history`.
+- Riwayat perubahan di tabel `interface_monitoring_changes` (siapa, kapan, alasan).
+- Kandidat: `GET /api/sla/candidates` — port dipantau yang kejadian down-nya terbuka lebih dari
+  `SlaController::UNUSED_CANDIDATE_DAYS` (7) hari; tampil sebagai panel di halaman SLA.
+- Poller membuang state alert port yang tidak dipakai, sehingga saat dipantau lagi ia mulai bersih
+  (tanpa alert transisi dari keadaan lama).
+
 ## Database
 
 ### Tabel Inti yang Dipakai Aplikasi
