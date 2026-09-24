@@ -186,6 +186,11 @@ reads its status and RX, so a port that lights up again shows an **Active again*
 is recorded with who made it and an optional reason; switching monitoring back on resumes everything
 from the next poll.
 
+Ports the device **no longer reports at all** — a swapped switch model, or MikroTik renumbering its
+ifIndex after a reboot or upgrade — are handled automatically: after a complete poll, a port that has
+been missing for more than 24 hours is marked *not in use* by `system`. If such a port is reported
+again it is re-enabled on its own; ports retired by an admin always stay retired.
+
 ## API
 
 The Android app talks to a token-authenticated REST API under `/api/v1`

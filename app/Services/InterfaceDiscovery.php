@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Log;
 
 class InterfaceDiscovery
 {
+    /** Ports not reported by the device for this long are auto-retired (see reconcileVanishedPorts). */
+    private const VANISHED_AFTER_HOURS = 24;
+
     private static bool $alertLogTableChecked = false;
 
     public function discover(int $deviceId, bool $isCli = false): array
@@ -203,7 +206,7 @@ class InterfaceDiscovery
         // Snapshot of previous counters for delta-based rate calc (only need for SFP).
         $prevCounters = [];
         $prevRows = DB::table('interfaces')
-            ->select(['if_index', 'in_octets', 'out_octets', 'counters_polled_at', 'is_monitored'])
+            ->select(['if_index', 'in_octets', 'out_octets', 'counters_polled_at', 'is_monitored', 'last_seen'])
             ->where('device_id', $deviceId)
             ->get();
         // Port yang ditandai "tidak dipakai" (is_monitored = 0): status & RX tetap
@@ -235,11 +238,13 @@ class InterfaceDiscovery
         $openDownEvents = $isCli ? $this->loadOpenDownEvents($deviceId) : [];
 
         $inserted = 0;
+        $seenIdx = [];
         $sfpCount = 0;
         $downSfpCount = 0;
 
         foreach ($ifIndex as $i => $raw) {
             $ifIdx = (int) filter_var($raw, FILTER_SANITIZE_NUMBER_INT);
+            $seenIdx[$ifIdx] = true;
             $name = trim(str_replace(['STRING:', '"'], '', $ifName[$i] ?? ''));
             $alias = trim(str_replace(['STRING:', '"'], '', $ifAlias[$i] ?? $name));
             $desc = trim(str_replace(['STRING:', '"'], '', $ifDescr[$i] ?? $name));
@@ -576,6 +581,10 @@ class InterfaceDiscovery
             $this->saveAlertState($alertStateFile, $alertState);
         }
 
+        if ($isCli && $seenIdx !== []) {
+            $this->reconcileVanishedPorts($deviceId, $seenIdx, $prevRows, $unmonitored);
+        }
+
         return [
             'success' => true,
             'inserted' => $inserted,
@@ -638,6 +647,77 @@ class InterfaceDiscovery
                 ->all();
         } catch (\Throwable $e) {
             return [];
+        }
+    }
+
+    /**
+     * Ports the device no longer reports (hardware swapped, MikroTik ifIndex renumbered
+     * after a reboot/upgrade, module slot removed…) used to linger forever with their
+     * last RX value, e.g. an sfp-sfpplus8 row on a 4-port switch last seen months ago.
+     *
+     * After a complete walk, a port absent for more than VANISHED_AFTER_HOURS is marked
+     * "tidak dipakai" by `system` (so it drops out of the UI, SLA, KPI and alerts without
+     * deleting the row — legacy tables still reference interfaces.id). If such a
+     * system-retired port shows up again it is re-enabled automatically; ports an admin
+     * retired stay retired.
+     *
+     * @param array<int,bool> $seenIdx ifIndex values returned by this poll
+     * @param array<int,bool> $unmonitored ifIndex values that were is_monitored = 0
+     */
+    private function reconcileVanishedPorts(int $deviceId, array $seenIdx, $prevRows, array $unmonitored): void
+    {
+        try {
+            if (!Schema::hasTable('interface_monitoring_changes')) {
+                return;
+            }
+            $cutoff = time() - self::VANISHED_AFTER_HOURS * 3600;
+            $now = now();
+
+            foreach ($prevRows as $row) {
+                $idx = (int) $row->if_index;
+                if (isset($seenIdx[$idx]) || isset($unmonitored[$idx])) {
+                    continue;
+                }
+                $last = $row->last_seen ? strtotime((string) $row->last_seen) : false;
+                if ($last === false || $last > $cutoff) {
+                    continue;
+                }
+                DB::table('interfaces')->where('device_id', $deviceId)->where('if_index', $idx)->update(['is_monitored' => 0]);
+                DB::table('interface_monitoring_changes')->insert([
+                    'device_id' => $deviceId, 'if_index' => $idx, 'is_monitored' => 0,
+                    'reason' => 'Tidak lagi dilaporkan perangkat (otomatis)', 'changed_by' => 'system', 'created_at' => $now,
+                ]);
+                $open = DB::table('interface_down_events')->where('device_id', $deviceId)->where('if_index', $idx)
+                    ->whereNull('up_at')->get(['id', 'down_at']);
+                foreach ($open as $ev) {
+                    DB::table('interface_down_events')->where('id', $ev->id)->update([
+                        'up_at' => $now,
+                        'duration_sec' => max(0, $now->getTimestamp() - strtotime((string) $ev->down_at)),
+                    ]);
+                }
+            }
+
+            // Re-enable ports that the SYSTEM retired and that are reported again.
+            $back = array_keys(array_intersect_key($unmonitored, $seenIdx));
+            if ($back === []) {
+                return;
+            }
+            $latest = DB::table('interface_monitoring_changes')
+                ->where('device_id', $deviceId)->whereIn('if_index', $back)
+                ->orderBy('id')->get(['if_index', 'changed_by', 'is_monitored'])
+                ->keyBy('if_index');
+            foreach ($back as $idx) {
+                $c = $latest[$idx] ?? null;
+                if ($c && $c->changed_by === 'system' && (int) $c->is_monitored === 0) {
+                    DB::table('interfaces')->where('device_id', $deviceId)->where('if_index', $idx)->update(['is_monitored' => 1]);
+                    DB::table('interface_monitoring_changes')->insert([
+                        'device_id' => $deviceId, 'if_index' => $idx, 'is_monitored' => 1,
+                        'reason' => 'Dilaporkan perangkat lagi (otomatis)', 'changed_by' => 'system', 'created_at' => $now,
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Housekeeping must never break polling.
         }
     }
 

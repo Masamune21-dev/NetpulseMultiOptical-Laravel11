@@ -4,6 +4,23 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Fixed: Port "Hantu" yang Tak Lagi Dilaporkan Perangkat
+
+- **Fixed**: satu switch 4 port SFP (CRS305-1G-4S+) tampil dengan 5 port SFP — `sfp-sfpplus8`
+  terakhir terlihat 13 Mar 2026 dengan RX beku. Poller hanya memperbarui port yang masih dilaporkan
+  perangkat; baris port yang hilang (hardware diganti, ifIndex MikroTik bernomor ulang setelah
+  reboot/upgrade) dibiarkan selamanya. Terukur 12 baris basi di 5 switch (6/2/2/1/1). Switch lain yang
+  dilaporkan "8 port" memang CRS309-1G-8S+ (8 port; 2 slot kosong = not present).
+- **Changed (poller)**: `InterfaceDiscovery::reconcileVanishedPorts()` — setelah walk lengkap, port yang
+  tidak dilaporkan > 24 jam (`VANISHED_AFTER_HOURS`) ditandai "tidak dipakai" oleh `system` (alasan
+  "Tidak lagi dilaporkan perangkat (otomatis)"), kejadian SLA terbukanya ditutup. Baris TIDAK dihapus
+  karena tabel lama (`alerts`, `sfp_optical_logs`) merujuk `interfaces.id`. Port yang ditandai sistem
+  otomatis dipantau lagi bila dilaporkan perangkat kembali; port yang ditandai admin tetap nonaktif.
+  Walk parsial tidak memicu apa pun karena `last_seen` port yang ada selalu baru.
+- **Notes**: produksi — ke-12 port basi tertandai dalam dua siklus poll; switch 4 port kini 4 SFP; 0 kejadian
+  terbuka tersisa di port tak dipantau. Penutupan kejadian dihitung di PHP (bukan `TIMESTAMPDIFF`) supaya
+  portabel. Test baru `tests/Feature/VanishedPortsTest.php` (4); suite 52 lulus.
+
 ## 2026-09-24 — Created: Port "Tidak Dipakai" (keluar dari SLA, alert, dan dashboard)
 
 - **Created**: fitur menandai port tidak dipakai di atas kolom lama `interfaces.is_monitored` (bawaan 1,
