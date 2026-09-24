@@ -14,6 +14,11 @@
     <button class="dev-tab" onclick="openTab('logs')">
         <i class="fas fa-file-lines"></i> Logs
     </button>
+    @if(($currentUser['role'] ?? '') === 'admin')
+    <button class="dev-tab" onclick="openTab('optical')">
+        <i class="fas fa-microchip"></i> Vendor &amp; Optik
+    </button>
+    @endif
 </div>
 
 <div class="tab-content active" id="telegram">
@@ -380,6 +385,77 @@
         </div>
     </div>
 </div>
+@if(($currentUser['role'] ?? '') === 'admin')
+<div class="tab-content" id="optical">
+    <div class="card">
+        <h3><i class="fas fa-microchip"></i> Vendor per Perangkat</h3>
+        <p class="help">
+            Status &amp; trafik interface dibaca lewat IF-MIB standar untuk semua perangkat SNMP.
+            Daya optik (DDM) butuh MIB vendor: MikroTik dan Huawei punya driver bawaan yang sudah
+            terverifikasi; vendor lain memakai ENTITY-SENSOR-MIB standar atau profil OID di bawah.
+        </p>
+        <div class="table-responsive">
+            <table class="table" id="opticalDeviceTable">
+                <thead><tr><th>Perangkat</th><th>Vendor terdeteksi</th><th>sysObjectID</th><th>Driver optik</th><th></th></tr></thead>
+                <tbody><tr><td colspan="5" class="loading">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3><i class="fas fa-sliders"></i> Profil OID Optik</h3>
+        <p class="help">
+            Untuk vendor yang belum didukung. Alur: simpan profil → <b>Uji</b> pada satu perangkat
+            (pratinjau nilai mentah → dBm) → <b>Aktifkan</b>. Profil aktif otomatis dipakai perangkat
+            yang cocok dengan awalan sysObjectID / pola sysDescr-nya. Menyunting profil membatalkan
+            hasil uji. Templat bawaan <b>belum diuji — jalankan Uji dulu</b>.
+        </p>
+        <div class="table-responsive">
+            <table class="table" id="opticalProfileTable">
+                <thead><tr><th>Nama</th><th>Cocok dengan</th><th>OID RX / TX</th><th>Satuan</th><th>Status</th><th></th></tr></thead>
+                <tbody><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
+            </table>
+        </div>
+        <div class="modal-actions">
+            <button class="btn" onclick="opticalOpenProfile()"><i class="fas fa-plus"></i> Profil baru</button>
+            <button class="btn btn-outline" onclick="opticalLoad()"><i class="fas fa-rotate"></i> Refresh</button>
+        </div>
+    </div>
+
+    <div class="card" id="opticalTestCard" style="display:none">
+        <h3><i class="fas fa-vial"></i> Hasil Uji <span id="opticalTestTitle"></span></h3>
+        <div id="opticalTestSummary" class="help"></div>
+        <div class="table-responsive">
+            <table class="table" id="opticalTestTable">
+                <thead><tr><th>Arah</th><th>Indeks</th><th>ifIndex</th><th>ifName</th><th>Mentah</th><th>dBm</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="opticalProfileModal" class="modal">
+    <div class="modal-box">
+        <button class="modal-close" onclick="opticalCloseProfile()" aria-label="Tutup">&times;</button>
+        <h3><i class="fas fa-sliders" style="color:var(--primary)"></i> <span id="opticalProfileTitle">Profil OID</span></h3>
+        <input type="hidden" id="op_id">
+        <div class="form-group"><label for="op_name">Nama</label><input id="op_name" maxlength="100" placeholder="mis. Switch ACME (ACME-DOM-MIB)"></div>
+        <div class="form-group"><label for="op_match_oid">Awalan sysObjectID</label><input id="op_match_oid" placeholder="1.3.6.1.4.1.12345"></div>
+        <div class="form-group"><label for="op_match_descr">Pola sysDescr (regex, opsional)</label><input id="op_match_descr" maxlength="255" placeholder="ACME OS"></div>
+        <div class="form-group"><label for="op_rx">OID kolom RX power</label><input id="op_rx" placeholder="1.3.6.1.4.1.12345.1.2.3.1.5"></div>
+        <div class="form-group"><label for="op_tx">OID kolom TX power (opsional)</label><input id="op_tx" placeholder="1.3.6.1.4.1.12345.1.2.3.1.7"></div>
+        <div class="form-group"><label for="op_index">Indeks baris</label><select id="op_index"></select></div>
+        <div class="form-group"><label for="op_unit">Satuan nilai</label><select id="op_unit"></select></div>
+        <div class="form-group"><label for="op_invalid">Nilai "tidak ada modul" (pisah koma, opsional)</label><input id="op_invalid" placeholder="-40000, 0"></div>
+        <div class="form-group"><label for="op_notes">Catatan</label><input id="op_notes" maxlength="500"></div>
+        <div class="help" id="op_errors" style="color:#c0392b"></div>
+        <div class="modal-actions">
+            <button class="btn" onclick="opticalSaveProfile()"><i class="fas fa-floppy-disk"></i> Simpan</button>
+            <button class="btn btn-outline" onclick="opticalCloseProfile()">Batal</button>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 @push('styles')
@@ -388,6 +464,9 @@
 
 @push('scripts')
 <script src="{{ asset('assets/js/settings.js') }}?v={{ filemtime(public_path('assets/js/settings.js')) }}"></script>
+@if(($currentUser['role'] ?? '') === 'admin')
+<script src="{{ asset('assets/js/optical-profiles.js') }}?v={{ filemtime(public_path('assets/js/optical-profiles.js')) }}"></script>
+@endif
 <script>
 // Override openTab to work with .dev-tab styling
 (function () {
@@ -407,6 +486,9 @@
         }
         if (id === 'logs' && typeof refreshSecurityLogs === 'function') {
             refreshSecurityLogs();
+        }
+        if (id === 'optical' && typeof opticalLoad === 'function') {
+            opticalLoad();
         }
     };
 

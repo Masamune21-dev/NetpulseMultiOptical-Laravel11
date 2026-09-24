@@ -65,6 +65,14 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        // Uji profil optik & deteksi ulang vendor menembak SNMP ke perangkat produksi:
+        // dibatasi 6/menit per admin supaya tombol yang ditekan berulang tidak membebani switch.
+        RateLimiter::for('optical-snmp', function (Request $request) {
+            $user = (array) $request->session()->get('auth.user', []);
+
+            return Limit::perMinute(6)->by('optical|' . ($user['id'] ?? $request->ip()));
+        });
+
         RateLimiter::for('api', function (Request $request) {
             $user = $request->user();
             $key = $user?->getAuthIdentifier()

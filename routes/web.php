@@ -12,6 +12,7 @@ use App\Http\Controllers\InterfaceThresholdsController;
 use App\Http\Controllers\MapApiController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\MonitoringApiController;
+use App\Http\Controllers\OpticalProfilesController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\LegacyApiController;
 use App\Http\Controllers\SettingsApiController;
@@ -192,6 +193,22 @@ Route::middleware(['legacy.auth'])->group(function () {
         ->middleware('legacy.role:admin,technician,viewer');
     Route::delete('/api/alert_logs', [AlertLogsApiController::class, 'destroy'])
         ->middleware('legacy.role:admin');
+
+    // Pengaturan → Vendor & Optik: profil OID optik + override driver per perangkat (admin).
+    Route::get('/api/optical/profiles', [OpticalProfilesController::class, 'index'])
+        ->middleware('legacy.role:admin');
+    Route::post('/api/optical/profiles', [OpticalProfilesController::class, 'save'])
+        ->middleware('legacy.role:admin');
+    Route::delete('/api/optical/profiles/{id}', [OpticalProfilesController::class, 'destroy'])
+        ->middleware('legacy.role:admin')->whereNumber('id');
+    Route::post('/api/optical/profiles/{id}/test', [OpticalProfilesController::class, 'test'])
+        ->middleware(['legacy.role:admin', 'throttle:optical-snmp'])->whereNumber('id');
+    Route::post('/api/optical/profiles/{id}/activate', [OpticalProfilesController::class, 'activate'])
+        ->middleware('legacy.role:admin')->whereNumber('id');
+    Route::post('/api/optical/devices/{deviceId}/override', [OpticalProfilesController::class, 'override'])
+        ->middleware('legacy.role:admin')->whereNumber('deviceId');
+    Route::post('/api/optical/devices/{deviceId}/redetect', [OpticalProfilesController::class, 'redetect'])
+        ->middleware(['legacy.role:admin', 'throttle:optical-snmp'])->whereNumber('deviceId');
 
     Route::get('/api/data', [LegacyApiController::class, 'data']);
     Route::get('/api/test_connection', [LegacyApiController::class, 'testConnection']);
