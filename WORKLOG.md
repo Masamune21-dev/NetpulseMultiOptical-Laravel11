@@ -4,6 +4,50 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Created: Dukungan Optik Multi-Vendor (driver, deteksi vendor, profil OID)
+
+Sebelumnya daya optik hanya terbaca untuk MikroTik (walk MIKROTIK-MIB ke SEMUA perangkat) dan
+Huawei (hanya bila **nama** perangkat memuat huawei/quidway/cloudengine). Switch vendor lain
+tetap terpantau status & trafiknya lewat IF-MIB, tetapi DDM-nya kosong.
+
+- **Created — lapisan driver `app/Services/Optical/`**: `OpticalDriver` (kontrak), `MikrotikDriver`
+  dan `HuaweiDriver` (logika lama dipindahkan apa adanya), `EntitySensorDriver` (ENTITY-SENSOR-MIB
+  RFC 3433 + CISCO-ENTITY-SENSOR-MIB, sensor `watts(6)` → dBm; berbasis standar, **belum diverifikasi
+  di perangkat BMKV**), `CustomProfileDriver` (profil OID admin), `VendorDetector` (sysObjectID +
+  sysDescr, cache 7 hari), `OpticalDriverResolver`, `SnmpSession`, `EntityAliasMap`, `OpticalUnits`.
+- **Changed — `InterfaceDiscovery`**: blok MikroTik + Huawei (±70 baris) diganti satu panggilan
+  resolver; bentuk peta hasil tetap `[ifName => [rx, tx]]` sehingga penyimpanan statistik & alert
+  tidak berubah. Metode Huawei privat dipindah ke `HuaweiDriver`.
+- **Notes — keputusan desain**: vendor tak terdeteksi → perilaku lama persis (tidak ada perangkat
+  yang kehilangan bacaan); profil aktif hanya dipakai bila lulus uji dan cocok sysObjectID/sysDescr;
+  kegagalan resolver/driver hanya `Log::warning`, polling jalan terus. Enumerasi tipe sensor di
+  RFC 3433 dan CISCO-ENTITY-SENSOR-MIB rev. 2020-09-22 **tidak memuat dBm**, jadi hanya `watts` yang
+  didukung — tidak ditebak.
+- **Created — migrasi (tabel baru saja)**: `optical_device_vendors` (hasil deteksi + override driver)
+  dan `optical_profiles` + 2 templat **nonaktif**: Juniper JUNIPER-DOM-MIB dan H3C/HPE Comware
+  HH3C-TRANSCEIVER-INFO-MIB. OID, indeks (ifIndex) dan satuan (0,01 dBm) dicocokkan dengan teks MIB
+  resmi. Migrasi sudah dijalankan di produksi.
+- **Created — Pengaturan → tab Vendor & Optik (admin)** + `OpticalProfilesController` + rute
+  `/api/optical/*` (`legacy.role:admin` + cek ulang di controller): vendor per perangkat, override
+  driver, deteksi ulang, CRUD profil, **Uji** (pratinjau mentah → dBm) sebelum **Aktifkan**, sunting =
+  hasil uji batal. Host/community selalu dari `snmp_devices` (tanpa SSRF); OID wajib numerik ≥ 9
+  komponen; Uji & deteksi ulang `throttle:optical-snmp` 6/menit; semua nilai di-`escHtml`; hapus
+  memakai konfirmasi dua klik, bukan `window.confirm()`.
+- **Created — `php artisan optical:probe`**: baca optik tanpa menulis statistik/alert, mode
+  `legacy`/`driver` + `--compare`.
+- **Notes — paritas (produksi, 23 perangkat: 20 MikroTik + 3 Huawei hasil deteksi sysObjectID)**:
+  baseline diambil dengan kode ASLI sebelum refactor, lalu dibandingkan dengan driver:
+  250 interface optik di kedua jalur, **0 hilang, 0 tambahan**; 135 identik, 113 selisih ≤ 0,5 dB,
+  2 selisih lebih besar. Kedua port itu dibaca ulang bergantian lama/baru dalam hitungan detik:
+  **nilainya identik**, selisih berasal dari redaman yang bergerak antar menit (satu port bergeser
+  -11,8…-12,6 dBm). Setelah poller dialihkan: siklus berikutnya memperbarui 268 port SFP di 23
+  perangkat, 141 bacaan hidup semuanya cocok dengan probe, tanpa peringatan fallback/galat.
+- **Verifikasi**: `bash scripts/test.sh` 34 lulus (20 baru: konversi satuan, klasifikasi vendor,
+  parsing tiap driver dengan fixture rekaan, pencocokan profil, validasi OID/SSRF, akses admin,
+  aturan aktivasi & override, cache detektor). `route:cache` + `view:cache`; `storage`/`bootstrap/cache`
+  dikembalikan ke www-data. UI tab baru belum dilihat di browser (tidak ada akun uji aktif) —
+  diverifikasi lewat test API dan kompilasi view.
+
 ## 2026-09-24 — Docs: README ditulis ulang dalam bahasa Inggris
 
 - **Changed**: `README.md` ditulis ulang dalam bahasa Inggris untuk repo publik — ringkasan, tabel fitur

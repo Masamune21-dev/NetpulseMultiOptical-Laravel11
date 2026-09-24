@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Services\Optical\OpticalDriverResolver;
+use App\Services\Optical\SnmpSession;
 use App\Support\Secret;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -190,61 +192,13 @@ class InterfaceDiscovery
             }
         }
 
-        $opticalMap = [];
-        $opticalNames = @\snmp2_walk(
-            $ip,
-            $community,
-            '1.3.6.1.4.1.14988.1.1.19.1.1.2',
-            $snmpTimeout,
-            $snmpRetries
-        );
-        if ($opticalNames === false) {
-            $opticalNames = [];
-        }
-
-        foreach ($opticalNames as $val) {
-            $optIfName = trim(str_replace(['STRING:', '"'], '', $val));
-            if (!isset($ifNameMap[$optIfName])) {
-                continue;
-            }
-
-            $ifIdx = $ifNameMap[$optIfName];
-            $txRaw = @\snmp2_get(
-                $ip,
-                $community,
-                "1.3.6.1.4.1.14988.1.1.19.1.1.9.$ifIdx",
-                $snmpTimeout,
-                $snmpRetries
-            );
-            $rxRaw = @\snmp2_get(
-                $ip,
-                $community,
-                "1.3.6.1.4.1.14988.1.1.19.1.1.10.$ifIdx",
-                $snmpTimeout,
-                $snmpRetries
-            );
-
-            if ($txRaw !== false && $rxRaw !== false) {
-                $txMatch = preg_match('/-?\d+/', $txRaw, $m1);
-                $rxMatch = preg_match('/-?\d+/', $rxRaw, $m2);
-                if ($txMatch && $rxMatch) {
-                    $opticalMap[$optIfName] = [
-                        'tx' => $m1[0] / 1000,
-                        'rx' => $m2[0] / 1000,
-                        'oper' => 1,
-                    ];
-                }
-            }
-        }
-
-        // Build Huawei optical map via SNMP (ENTITY-MIB + HUAWEI-ENTITY-EXTENT-MIB).
-        $huaweiOpticalMap = [];
-        $isHuawei = stripos((string) ($device->device_name ?? ''), 'huawei') !== false
-            || stripos((string) ($device->device_name ?? ''), 'quidway') !== false
-            || stripos((string) ($device->device_name ?? ''), 'cloudengine') !== false;
-        if ($isHuawei) {
-            $huaweiOpticalMap = $this->buildHuaweiOpticalMap($ip, $community, $ifNameMap);
-        }
+        // Daya optik (DDM) lewat lapisan driver multi-vendor (app/Services/Optical):
+        // MikroTik & Huawei dengan driver bawaan terverifikasi, vendor lain lewat
+        // ENTITY-SENSOR-MIB atau profil OID admin. Vendor yang tak terdeteksi memakai
+        // perilaku lama persis (lihat OpticalDriverResolver). Hasil berbentuk sama:
+        // [ifName => ['rx' => ?float, 'tx' => ?float]].
+        $opticalMap = app(OpticalDriverResolver::class)
+            ->read($device, new SnmpSession((string) $ip, (string) $community), $ifNameMap)['optics'];
 
         // Snapshot of previous counters for delta-based rate calc (only need for SFP).
         $prevCounters = [];
@@ -364,9 +318,6 @@ class InterfaceDiscovery
                     if (isset($opticalMap[$name])) {
                         $tx = $opticalMap[$name]['tx'];
                         $rx = $opticalMap[$name]['rx'];
-                    } elseif (isset($huaweiOpticalMap[$name])) {
-                        $tx = $huaweiOpticalMap[$name]['tx'];
-                        $rx = $huaweiOpticalMap[$name]['rx'];
                     }
                 } else {
                     $rx = -40.00;
@@ -1169,116 +1120,6 @@ class InterfaceDiscovery
      * @param  array<string,int>  $ifNameMap  [ifName => ifIndex] from discover()
      * @return array<string,array{tx:float|null,rx:float|null}>
      */
-    private function buildHuaweiOpticalMap(string $ip, string $community, array $ifNameMap): array
-    {
-        // Reverse map: ifIndex → ifName
-        $ifIdxToName = [];
-        foreach ($ifNameMap as $name => $idx) {
-            $ifIdxToName[$idx] = $name;
-        }
-
-        // Step 1: entAliasMappingIdentifier → entPhysicalIndex → ifIndex
-        $physToIfIdx = $this->walkHuaweiAliasMap($ip, $community);
-
-        // Step 2: Walk hwEntityOpticalRxPower (.8) and hwEntityOpticalTxPower (.9)
-        $rxWalk = @\snmp2_real_walk($ip, $community, '1.3.6.1.4.1.2011.5.25.31.1.1.3.1.8');
-        $txWalk = @\snmp2_real_walk($ip, $community, '1.3.6.1.4.1.2011.5.25.31.1.1.3.1.9');
-
-        if (empty($rxWalk) && empty($txWalk)) {
-            return [];
-        }
-
-        $rxByPhys = [];
-        foreach ((is_array($rxWalk) ? $rxWalk : []) as $oid => $val) {
-            if (preg_match('/\.(\d+)$/', $oid, $m) && preg_match('/(-?\d+)/', $val, $vm)) {
-                $rxByPhys[(int) $m[1]] = (int) $vm[1];
-            }
-        }
-
-        $txByPhys = [];
-        foreach ((is_array($txWalk) ? $txWalk : []) as $oid => $val) {
-            if (preg_match('/\.(\d+)$/', $oid, $m) && preg_match('/(-?\d+)/', $val, $vm)) {
-                $txByPhys[(int) $m[1]] = (int) $vm[1];
-            }
-        }
-
-        // Step 3: Join physIdx → ifName → normalized dBm
-        $result = [];
-        $allPhys = array_unique(array_merge(array_keys($rxByPhys), array_keys($txByPhys)));
-
-        foreach ($allPhys as $physIdx) {
-            $ifIdx = $physToIfIdx[$physIdx] ?? null;
-            if ($ifIdx === null) {
-                continue;
-            }
-            $ifName = $ifIdxToName[$ifIdx] ?? null;
-            if ($ifName === null) {
-                continue;
-            }
-
-            $result[$ifName] = [
-                'rx' => isset($rxByPhys[$physIdx])
-                    ? $this->normalizeHuaweiOpticalPower($rxByPhys[$physIdx])
-                    : null,
-                'tx' => isset($txByPhys[$physIdx])
-                    ? $this->normalizeHuaweiOpticalPower($txByPhys[$physIdx])
-                    : null,
-            ];
-        }
-
-        return $result;
-    }
-
-    /**
-     * Walk entAliasMappingIdentifier and return [entPhysicalIndex => ifIndex].
-     */
-    private function walkHuaweiAliasMap(string $ip, string $community): array
-    {
-        $walk = @\snmp2_real_walk($ip, $community, '1.3.6.1.2.1.47.1.3.2.1.2');
-        if (!is_array($walk) || empty($walk)) {
-            return [];
-        }
-
-        $physToIfIdx = [];
-        foreach ($walk as $oid => $val) {
-            // OID suffix: <entPhysicalIndex>.<logicalIndex> (logicalIndex usually 0)
-            if (!preg_match('/\.(\d+)\.(\d+)$/', $oid, $om)) {
-                continue;
-            }
-            $physIdx = (int) $om[1];
-            // Value is an OID pointer ending in ifIndex, e.g. "OID: .1.3.6.1.2.1.2.2.1.1.67"
-            if (preg_match('/\.(\d+)$/', $val, $vm)) {
-                $physToIfIdx[$physIdx] = (int) $vm[1];
-            }
-        }
-
-        return $physToIfIdx;
-    }
-
-    /**
-     * Normalize a raw Huawei optical power integer to dBm.
-     *
-     * Huawei reports hwEntityOpticalRxPower / hwEntityOpticalTxPower in two
-     * possible units depending on platform/firmware:
-     *   - 0.01 dBm when value <= 0
-     *   - microwatts when value > 0 (converted via 10*log10(raw/1000))
-     */
-    private function normalizeHuaweiOpticalPower(int $raw): ?float
-    {
-        if ($raw <= 0) {
-            $dbm = $raw / 100.0;
-        } else {
-            $dbm = 10.0 * log10($raw / 1000.0);
-        }
-
-        // Sanity: typical SFP range is -60..+10 dBm
-        if ($dbm < -60.0 || $dbm > 10.0) {
-            return null;
-        }
-
-        return round($dbm, 3);
-    }
-
     private function loadAlertState(string $path, ?int $deviceId = null): array
     {
         if (!is_file($path)) {
