@@ -4,6 +4,23 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Tindak Lanjut Keamanan: CSP Ditegakkan, Verifikasi Browser, Cache Root
+
+- **Changed (server, di luar repo)**: CSP di `snippets/netpulse-headers.conf` diubah dari
+  `Content-Security-Policy-Report-Only` menjadi **`Content-Security-Policy`** setelah 8 halaman ber-login
+  (dashboard, devices, interfaces, map, monitoring, settings, sla, users) × desktop/HP diperiksa: 0 galat
+  konsol, 0 pelanggaran, ubin peta tetap tampil. Cadangan snippet Report-Only:
+  `/root/netpulse-headers.conf.bak-reportonly`.
+- **Fixed**: setelah upgrade Laravel 12, artisan yang dijalankan sebagai root meninggalkan 5 folder
+  `storage/framework/cache/data/*` milik root → `fopen … Permission denied` di `laravel.log` (13:05 WIB).
+  `chown -R www-data:www-data storage bootstrap/cache` + `cache:clear`; tidak ada galat sesudahnya.
+- **Notes — verifikasi browser**: memakai akun admin sementara bernama acak (`kvaudit_*`, sandi acak yang
+  tidak pernah ditampilkan), dibuat khusus untuk pemeriksaan ini lalu **dihapus** beserta token API-nya
+  (sisa 0). Diperiksa sebelum upgrade, sesudah upgrade Laravel 12, dan sesudah CSP ditegakkan.
+- **Notes**: `laravel.log` berisi peringatan `FCM push failed … NotRegistered` untuk token HP lama — wajar
+  selama staf berpindah ke APK 2.1.2+8 (kunci baru = pasang ulang = token baru). Token mati itu belum
+  dibersihkan otomatis; layak ditambahkan penghapusan token saat FCM membalas `NotRegistered`.
+
 ## 2026-09-24 — Changed: upgrade Laravel 11.56 → 12.69 (cabang 11 sudah EOL)
 
 - **Changed**: `composer.json` — `laravel/framework` ^12.0 (terpasang 12.69.2), `laravel/tinker` ^2.10.1,
