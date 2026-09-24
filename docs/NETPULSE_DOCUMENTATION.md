@@ -667,6 +667,37 @@ SNMP function yang dibutuhkan:
 - `snmp2_real_walk`
 - `snmp3_get` untuk test SNMP v3 sederhana.
 
+## Dukungan Vendor & Driver Optik
+
+Status/trafik interface dibaca lewat IF-MIB standar untuk semua perangkat SNMP v2c. Daya optik
+(DDM RX/TX) butuh MIB vendor, dan sejak 24 Sep 2026 dibaca lewat lapisan driver di
+`app/Services/Optical/`:
+
+| Kelas | Isi |
+|---|---|
+| `VendorDetector` | Baca `sysObjectID` (1.3.6.1.2.1.1.2.0) + `sysDescr` sekali, simpan di tabel `optical_device_vendors`, baca ulang tiap 7 hari (1 jam bila gagal). Enterprise 14988 → mikrotik, 2011 → huawei; sysDescr VRP/Huawei/Quidway/CloudEngine atau RouterOS juga dikenali. |
+| `OpticalDriverResolver` | Urutan: override admin → profil aktif yang cocok → driver bawaan vendor → (vendor tak terdeteksi) perilaku lama persis: MikroTik untuk semua + Huawei bila nama perangkat memuat huawei/quidway/cloudengine. Driver yang lebih dulu menang per ifName. Kegagalan resolver/driver dicatat `Log::warning` dan tidak menghentikan polling. |
+| `MikrotikDriver` | `mtxrOpticalTable` 1.3.6.1.4.1.14988.1.1.19.1.1 (.2 nama, .9 TX, .10 RX, 0,001 dBm). Terverifikasi. |
+| `HuaweiDriver` | `hwEntityOpticalRxPower/TxPower` 1.3.6.1.4.1.2011.5.25.31.1.1.3.1.8/.9 via `entAliasMappingIdentifier`; 0,01 dBm bila ≤ 0, µW bila > 0. Terverifikasi. |
+| `EntitySensorDriver` | ENTITY-SENSOR-MIB (1.3.6.1.2.1.99.1.1.1) lalu CISCO-ENTITY-SENSOR-MIB (1.3.6.1.4.1.9.9.91.1.1.1.1): sensor `watts(6)` saja (enumerasi tipe di kedua MIB tidak memuat dBm), RX/TX dari nama sensor, ifIndex lewat alias map sensor/induknya atau nama port di label. **Berbasis standar, belum diverifikasi di perangkat BMKV.** |
+| `CustomProfileDriver` | Profil admin di tabel `optical_profiles`: OID kolom RX/TX, indeks (`ifIndex` / `entPhysicalIndex`), satuan, nilai tak sah. |
+
+Templat bawaan (nonaktif sampai lulus uji), OID dicocokkan dengan teks MIB resmi:
+Juniper JUNIPER-DOM-MIB `1.3.6.1.4.1.2636.3.60.1.1.1.1.5`/`.7` dan H3C/HPE Comware
+HH3C-TRANSCEIVER-INFO-MIB `1.3.6.1.4.1.25506.2.70.1.1.1.12`/`.9`, keduanya 0,01 dBm per ifIndex.
+
+**UI:** Pengaturan → tab **Vendor & Optik** (admin saja): tabel vendor per perangkat + override
+driver + deteksi ulang, daftar profil + Uji (pratinjau mentah → dBm) + Aktifkan. Menyunting profil
+membatalkan hasil uji dan menonaktifkannya. Rute `/api/optical/*` memakai `legacy.role:admin` dan
+pemeriksaan ulang di controller; Uji & deteksi ulang dibatasi 6/menit (`throttle:optical-snmp`).
+
+**Keamanan:** host & community selalu dari `snmp_devices` — pengguna tidak pernah memasok alamat.
+OID wajib numerik minimal 9 komponen (tidak bisa walk subtree besar seperti `1.3.6.1.2.1`).
+
+**Uji paritas / diagnosa:** `php artisan optical:probe` membaca optik semua perangkat tanpa menulis
+statistik/alert. `--mode=legacy` (jalur lama) vs `--mode=driver`, lalu
+`--compare lama.json baru.json` (toleransi default 0,5 dB karena pembacaan hidup berfluktuasi).
+
 ## Database
 
 ### Tabel Inti yang Dipakai Aplikasi

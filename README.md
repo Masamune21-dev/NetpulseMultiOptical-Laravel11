@@ -35,9 +35,49 @@ you the uptime numbers you need for SLA reports.
 | **SLA reports** | Availability per device and interface for any period, exportable to CSV and PDF. |
 | **Network map** | Leaflet map of nodes and links, with live link status, editable paths and a lock mode. |
 | **Alerts** | Web UI alert log, Telegram notifications and Firebase push to the mobile app, with maintenance-window mutes per device (or globally). |
-| **Discovery** | SNMP interface discovery, including the Huawei optical module MIBs (ENTITY-MIB + HUAWEI-ENTITY-EXTENT-MIB); MikroTik is supported too. |
+| **Multi-vendor optics** | Vendor auto-detection from `sysObjectID`, built-in drivers for MikroTik and Huawei, a standards-based ENTITY-SENSOR-MIB reader, and custom OID profiles with a built-in test for anything else. See [Supported devices](#supported-devices). |
 | **Roles** | `admin`, `technician` and `viewer`. Viewers only ever see demo data. |
 | **Android app** | Flutter app for dashboards, monitoring, the map and push alerts. |
+
+## Supported devices
+
+NetPulse splits monitoring into two layers, because they depend on very different MIBs:
+
+| What | How it is read | Works with |
+|---|---|---|
+| **Interface status & traffic** | Standard IF-MIB / IF-MIB ifXTable | Any device that answers SNMP v2c |
+| **Optical power (DDM: RX/TX dBm)** | Vendor-specific MIBs, chosen per device | See below |
+
+Optical readings per vendor:
+
+| Vendor / platform | Method | Status |
+|---|---|---|
+| MikroTik RouterOS (CRS, CCR, …) | MIKROTIK-MIB `mtxrOpticalTable` | ✅ Verified in production |
+| Huawei VRP (S-series, CloudEngine, Quidway) | HUAWEI-ENTITY-EXTENT-MIB + ENTITY-MIB alias mapping | ✅ Verified in production |
+| Devices exposing ENTITY-SENSOR-MIB power sensors (RFC 3433 or CISCO-ENTITY-SENSOR-MIB), e.g. many Cisco and Arista models | Standard sensor tables, `watts` sensors converted to dBm | ⚠️ Standards-based, not yet verified on our hardware |
+| Juniper Junos | Built-in template: JUNIPER-DOM-MIB (0.01 dBm, ifIndex) | ⚠️ Template, inactive until tested |
+| H3C / HPE Comware | Built-in template: HH3C-TRANSCEIVER-INFO-MIB (0.01 dBm, ifIndex) | ⚠️ Template, inactive until tested |
+| Anything else | Custom OID profile (**Settings → Vendor & Optik**) | Works once the built-in test passes |
+
+The vendor is detected once from `sysObjectID` / `sysDescr` and cached. Admins can override the
+optical driver per device (or turn optical reading off). A device whose vendor cannot be
+detected falls back to the original MikroTik + Huawei behaviour, so nothing that worked before
+stops working.
+
+### Adding a new vendor
+
+1. Find the MIB that exposes transceiver RX/TX power for your platform and note the **column
+   OIDs** (e.g. `…1.5` for RX and `…1.7` for TX), what the row index is (`ifIndex` or
+   `entPhysicalIndex`) and the unit (dBm, 0.1/0.01/0.001 dBm, mW or 0.1 µW).
+2. Open **Settings → Vendor & Optik → New profile**, fill in the OIDs and unit, and match it to
+   the device by `sysObjectID` prefix (e.g. `1.3.6.1.4.1.<enterprise>`) and/or a `sysDescr` pattern.
+3. Click **Test** against one of your devices. You get a preview table (interface, raw value,
+   converted dBm) before anything is used for monitoring.
+4. **Activate** the profile. Matching devices pick it up on the next poll.
+
+OIDs must be numeric and deep enough to be a table column; the test always runs against a
+device that is already registered, never an arbitrary host. Pull requests that add verified
+built-in drivers or templates are welcome — please include the MIB reference.
 
 ## Tech stack
 
@@ -102,6 +142,8 @@ All polling runs through the Laravel scheduler. Add one cron entry:
 | `optical:degradation` | daily 06:00 | Detect links with declining optical power |
 
 Run a poll by hand with `php artisan poll:interfaces` (or `--device=<id>` for one device).
+`php artisan optical:probe` reads optical power from every device **without** writing stats or
+alerts — useful to check a new driver or profile (`--mode=legacy|driver`, `--compare a.json b.json`).
 
 ### Push notifications (optional)
 
@@ -173,6 +215,7 @@ Found a vulnerability? Please report it privately through
 | `app/Http/Controllers` | Web pages and the session-based web API |
 | `app/Http/Controllers/Api/V1` | Mobile REST API |
 | `app/Services/InterfaceDiscovery.php` | SNMP discovery, polling and alerting |
+| `app/Services/Optical/` | Vendor detection and optical drivers (MikroTik, Huawei, ENTITY-SENSOR, custom profiles) |
 | `app/Console/Commands` | Scheduled commands (polling, rollups, pruning, degradation) |
 | `resources/views`, `public/assets` | Blade templates, CSS and JavaScript |
 | `mobile/` | Flutter Android app |
