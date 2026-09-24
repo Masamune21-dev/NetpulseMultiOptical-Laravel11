@@ -4,6 +4,26 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Created: Netpulse Mobile 2.1.2+8 ditandatangani kunci rilis sendiri
+
+- **Changed (penandatanganan)**: build rilis dulu memakai **kunci debug** server ini
+  (`signingConfig = debug`). Kini `mobile/android/app/build.gradle.kts` membaca kunci rilis dari berkas
+  properti di LUAR repo — path dari env `NETPULSE_KEY_PROPERTIES` (disetel `bin/build-apk.sh`) atau
+  `mobile/android/key.properties` (di-.gitignore). Build rilis **gagal keras** bila berkas itu tidak ada;
+  tidak ada lagi jatuh diam-diam ke kunci debug. Keystore & kata sandinya tidak pernah masuk git (repo publik).
+- **Created (server, di luar repo)**: keystore rilis RSA 4096 (alias `netpulse`, berlaku 10.000 hari) di
+  direktori root 700 / berkas 600, dan ikut **cadangan terenkripsi harian** `kv-backup-all.sh` bagian 3b
+  (daftar berkas rahasia GPG AES256; sudah diuji enkripsi → dekripsi). Kunci ini tak tergantikan: APK
+  bertanda tangan lain tidak bisa meng-update aplikasi yang sudah terpasang.
+- **Changed**: `pubspec.yaml` 2.1.1+7 → **2.1.2+8** (membawa tambalan keamanan mobile: token di secure
+  storage, cleartext mati di rilis, base URL terkunci). Dibangun `bash bin/build-apk.sh` (split-per-abi,
+  arm64 20,9 MB + arm32 18,5 MB) ke `public/downloads/`; `apksigner` memastikan kedua APK memakai
+  sertifikat rilis baru (SHA-256 `a67c2cfe…3630`), bukan sertifikat debug.
+- **Notes — wajib pasang ulang sekali**: karena tanda tangan berubah, Android menolak memperbarui
+  instalasi lama. Pengguna harus **menghapus aplikasi lama lalu memasang APK baru** dari tombol
+  "Download APK"; setelah itu update berikutnya normal. Tidak ada endpoint/versi yang diiklankan server
+  (`/download/app` selalu menyajikan berkas terbaru), jadi tidak ada config yang diubah.
+
 ## 2026-09-24 — Fixed: Temuan Review Keamanan setelah Repo Dijadikan Publik
 
 Kode kini bisa dibaca siapa pun, jadi celah yang tadinya "tersembunyi" diperlakukan sebagai

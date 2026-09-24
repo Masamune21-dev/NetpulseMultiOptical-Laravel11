@@ -11,6 +11,14 @@ MOBILE_DIR="${ROOT_DIR}/mobile"
 OUTPUT_DIR="${ROOT_DIR}/public/downloads"
 TARGET_APK="${OUTPUT_DIR}/netpulse.apk"
 
+# Kunci rilis di luar repo (repo publik). Isi: storeFile/storePassword/keyAlias/keyPassword.
+# Kalau tidak ada, Gradle menolak build rilis — tidak ada jatuh diam-diam ke kunci debug.
+export NETPULSE_KEY_PROPERTIES="${NETPULSE_KEY_PROPERTIES:-/root/.kv-keystores/netpulse-key.properties}"
+if [ ! -f "${NETPULSE_KEY_PROPERTIES}" ]; then
+  echo "ABORT: kunci rilis tidak ditemukan di ${NETPULSE_KEY_PROPERTIES}" >&2
+  exit 1
+fi
+
 echo "=== [1/4] Navigasi ke ${MOBILE_DIR} ==="
 cd "${MOBILE_DIR}"
 
