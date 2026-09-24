@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -181,7 +182,10 @@ class _AccountScreenState extends State<AccountScreen> {
               onTap: _busy ? null : _testPush,
             ),
           ),
-          Card(
+          // Base URL hanya bisa diubah di build debug. Di rilis, kolom ini dulu bisa
+          // dipakai social engineering: korban diarahkan mengisi URL server penyerang,
+          // lalu kata sandinya terkirim ke sana saat login berikutnya.
+          if (kDebugMode) Card(
             child: ListTile(
               leading: const Icon(Icons.link),
               title: const Text('API Base URL'),

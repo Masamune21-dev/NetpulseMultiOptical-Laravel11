@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../api/api_client.dart';
@@ -41,7 +42,17 @@ class AuthService {
 
   Future<void> logout() async {
     try {
-      await _api.postJson('/api/v1/auth/logout');
+      // Kirim token FCM perangkat ini supaya server melepasnya: HP yang sudah logout
+      // tidak lagi menerima alert akun ini, dan bisa dipakai login akun lain.
+      String? fcmToken;
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken();
+      } catch (_) {
+        fcmToken = null;
+      }
+      await _api.postJson('/api/v1/auth/logout', body: {
+        if (fcmToken != null && fcmToken.isNotEmpty) 'fcm_token': fcmToken,
+      });
     } catch (_) {
       // best-effort
     }
