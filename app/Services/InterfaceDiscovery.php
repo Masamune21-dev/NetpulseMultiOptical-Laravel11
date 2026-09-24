@@ -219,6 +219,12 @@ class InterfaceDiscovery
         // the table/feature is absent.
         $thresholdOverrides = $isCli ? $this->loadThresholdOverrides($deviceId) : [];
 
+        // ifIndex => true for every SLA down event of this device that is still open.
+        // Used to close events whose link is up again even when the down->up transition
+        // was missed (e.g. alert state lost while the link was down). Without this an
+        // event stays open forever and the SLA report keeps counting the port as down.
+        $openDownEvents = $isCli ? $this->loadOpenDownEvents($deviceId) : [];
+
         $inserted = 0;
         $sfpCount = 0;
         $downSfpCount = 0;
@@ -415,7 +421,9 @@ class InterfaceDiscovery
                 // are throttled by flap-cooldown or silenced by maintenance.
                 if ($linkWentDown) {
                     $this->recordDownEvent($deviceId, $ifIdx, $name, $alias, (string) ($device->device_name ?? ''), true);
-                } elseif ($linkCameUp) {
+                } elseif ($linkCameUp || ($linkUp && isset($openDownEvents[$ifIdx]))) {
+                    // Second condition = reconciliation: the link is up but an event is still
+                    // open (the transition that should have closed it was never observed).
                     $this->recordDownEvent($deviceId, $ifIdx, $name, $alias, (string) ($device->device_name ?? ''), false);
                 }
 
@@ -595,6 +603,27 @@ class InterfaceDiscovery
      * we close the latest open event and compute its duration. Best-effort —
      * never breaks polling.
      */
+    /**
+     * @return array<int,bool> ifIndex => true for open SLA down events of the device.
+     */
+    private function loadOpenDownEvents(int $deviceId): array
+    {
+        try {
+            if (!Schema::hasTable('interface_down_events')) {
+                return [];
+            }
+
+            return DB::table('interface_down_events')
+                ->where('device_id', $deviceId)
+                ->whereNull('up_at')
+                ->pluck('if_index')
+                ->mapWithKeys(fn ($i) => [(int) $i => true])
+                ->all();
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
     private function recordDownEvent(int $deviceId, int $ifIndex, string $ifName, string $ifAlias, string $deviceName, bool $down): void
     {
         try {

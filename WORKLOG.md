@@ -4,6 +4,29 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Fixed: SLA Report Menghitung Interface yang Sudah UP sebagai Down
+
+- **Fixed (akar masalah)**: `interface_down_events` hanya ditutup saat poller melihat transisi
+  "tadinya down → sekarang up" di state alert. Bila state itu hilang selagi link down (mis. gangguan
+  massal 8 Sep 03:41–03:46), transisinya tak pernah terlihat, kejadian terbuka selamanya, dan SLA
+  (`COALESCE(up_at, NOW())`) terus menghitung port itu down sampai detik ini. Terukur: 44 kejadian
+  terbuka, **26 milik interface yang jelas UP** (oper 1, RX normal), sebagian terbuka sejak 29 Jul.
+- **Fixed (poller)**: `InterfaceDiscovery` kini memuat kejadian terbuka per perangkat sekali per siklus
+  (`loadOpenDownEvents`) dan menutupnya begitu link terlihat up, tanpa menunggu transisi.
+- **Created**: `php artisan sla:reconcile [--apply] [--ids=snapshot.json]` — memperbaiki riwayat dengan
+  waktu pulih SEBENARNYA: alert `interface_up` pertama → sampel RX mentah pertama di atas ambang /
+  rollup per jam mulai JAM BERIKUTNYA (jam tempat link turun masih berisi sampel bagus sebelum
+  gangguan), diambil yang paling awal. Port yang masih down dibiarkan terbuka; perangkat yang sudah
+  dihapus ditutup di sampel terakhirnya; gangguan yang berlangsung SETELAH pemulihan yang terlewat
+  dibuka ulang dari sampel buruk pertama. Dry run bawaan.
+- **Changed (data produksi)**: dijalankan pada snapshot 44 kejadian
+  (`storage/app/sla-open-events-20260924.json`, termasuk yang sempat ditutup poller dengan "sekarang"):
+  27 ditutup dengan waktu pulih dari riwayat (21 data mentah, 6 rollup — mis. port 10GE perangkat 50
+  ternyata down ±21 menit, bukan 57 hari), 5 milik perangkat terhapus ditutup, 12 tetap terbuka
+  (memang down), 1 gangguan yang sedang berjalan sejak 19 Sep 23:37 dibuka ulang. Sesudahnya: 13
+  kejadian terbuka, **0 milik interface yang UP**.
+- **Notes**: test baru `tests/Feature/SlaReconcileTest.php` (6).
+
 ## 2026-09-24 — Fixed: Tab Vendor & Optik bertabrakan dan terpotong
 
 - **Fixed**: kartu "Profil OID Optik" menabrak kartu "Vendor per Perangkat" — tab ini satu-satunya
