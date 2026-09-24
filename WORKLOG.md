@@ -4,6 +4,23 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Fixed: test PHP bisa mengenai MariaDB produksi → `scripts/test.sh`
+
+- **Fixed**: `php artisan test` di checkout ini resolve ke MariaDB `netpulse` produksi — config cache
+  (`bootstrap/cache/config.php`) aktif dan menang atas `<env>` phpunit, dan env sqlite di `phpunit.xml`
+  bahkan dikomentari. Test ber-`RefreshDatabase` akan menjalankan `migrate:fresh` di produksi.
+- **Created**: `scripts/test.sh` — pola yang sama dengan kelima app KusumaVision: `APP_CONFIG_CACHE` /
+  `APP_ROUTES_CACHE` / `APP_EVENTS_CACHE` dialihkan ke path tak-ada, `FIREBASE_SERVICE_ACCOUNT_JSON`
+  dialihkan (QUEUE sync bisa mengirim push sungguhan), lalu probe koneksi harus `sqlite|:memory:` atau
+  skrip abort. `composer test` memanggil skrip ini.
+- **Changed**: `phpunit.xml` — env sqlite `:memory:` dihidupkan + pengalihan cache & FCM yang sama
+  (lapis kedua, supaya runner IDE ikut aman).
+- **Notes**: suite sekarang 2 test (`ExampleTest`), lulus lewat skrip. **Migrasi belum kompatibel
+  sqlite**: `2026_06_15_000001_create_interface_stats_rollup_tables.php` memakai nama indeks
+  `uniq_dev_if_bucket` di lebih dari satu tabel — sah di MariaDB (nama indeks per tabel), bentrok di
+  sqlite (global). Test ber-`RefreshDatabase` baru bisa dipakai setelah nama indeks itu dibuat unik
+  per tabel lewat migrasi baru; migrasi lama tidak disentuh.
+
 ## 2026-09-18 — Fixed: Beranda kosong di 2.1.0, kartu dempet, APK 56 MB → rilis 2.1.1+7 split-per-abi
 
 Umpan balik user dari HP setelah memasang 2.1.0+6: Beranda hanya menampilkan hero dan dua ubin

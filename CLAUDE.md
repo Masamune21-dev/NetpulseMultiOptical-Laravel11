@@ -25,3 +25,10 @@ bash bin/build-apk.sh                # Kompilasi Flutter APK (hasil: public/down
 ## Aturan Baku AI Agent
 
 - **Wajib Catat di WORKLOG.md**: Setiap pekerjaan dan perubahan kode/fitur/tampilan/bugfix **WAJIB dicatat di berkas `WORKLOG.md`** sebelum commit. Cantumkan tanggal, kategori perubahan (Created/Changed/Fixed/Notes), dan penjelasan teknis secara akurat. Jangan pernah menyelesaikan task tanpa memperbarui `WORKLOG.md`.
+
+## Test
+
+Jalankan **hanya** `bash scripts/test.sh` / `composer test` — checkout ini produksi (MariaDB `netpulse`,
+config cache aktif) dan `php artisan test` polos akan mengenai database produksi. Migrasi belum
+kompatibel sqlite (nama indeks `uniq_dev_if_bucket` ganda), jadi test ber-`RefreshDatabase` belum bisa
+dipakai sampai itu dibereskan (lihat WORKLOG 2026-09-24).
