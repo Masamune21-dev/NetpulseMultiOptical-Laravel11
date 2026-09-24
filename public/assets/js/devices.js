@@ -104,6 +104,21 @@ function toggleDeviceMute(id, currentlyMuted) {
         .catch(() => showNotification('Failed to update mute', 'error'));
 }
 
+let deviceRowsById = new Map();
+let deviceTableBound = false;
+
+// Satu pendengar klik untuk seluruh tabel (event delegation), dipasang sekali.
+function bindDeviceTableActions(tb) {
+    if (deviceTableBound) return;
+    deviceTableBound = true;
+    tb.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-edit-device]');
+        if (!btn) return;
+        const d = deviceRowsById.get(btn.dataset.editDevice);
+        if (d) editDevice(d);
+    });
+}
+
 function loadDevices() {
     loadDeviceMutes().finally(() => {
     fetch('/api/devices')
@@ -111,6 +126,11 @@ function loadDevices() {
         .then(data => {
             const tb = document.querySelector('#deviceTable tbody');
             if (!tb) return;
+
+            // Data baris disimpan di peta, bukan diselipkan ke atribut onclick sebagai JSON:
+            // JSON di atribut pecah oleh tanda kutip dan membuka celah XSS lewat nama perangkat.
+            deviceRowsById = new Map(data.map(d => [String(d.id), d]));
+            bindDeviceTableActions(tb);
 
             const html = data.map(d => {
                 const snmpClass = d.snmp_version === '3' ? 'snmp-v3' : 'snmp-v2c';
@@ -136,26 +156,26 @@ function loadDevices() {
                         <div class="dev-name-cell">
                             <div class="dev-icon"><i class="fas fa-server"></i></div>
                             <div>
-                                <div class="dev-name">${d.device_name}</div>
+                                <div class="dev-name">${escHtml(d.device_name)}</div>
                             </div>
                         </div>
                     </td>
-                    <td><span style="font-family:monospace;font-size:0.82rem">${d.ip_address}</span></td>
+                    <td><span style="font-family:monospace;font-size:0.82rem">${escHtml(d.ip_address)}</span></td>
                     <td style="text-align:center"><span class="snmp-badge ${snmpClass}">${snmpLabel}</span></td>
                     <td style="text-align:center;font-size:0.82rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${auth}</td>
-                    <td style="text-align:center"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                    <td style="text-align:center"><span class="status-badge ${statusClass}">${escHtml(statusLabel)}</span></td>
                     <td class="actions-cell" style="text-align:center">
                         <div class="action-buttons">
-                            <button class="btn btn-icon btn-edit action-edit" onclick='editDevice(${JSON.stringify(d)})' title="Edit">
+                            <button class="btn btn-icon btn-edit action-edit" data-edit-device="${escHtml(d.id)}" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn btn-icon btn-info" onclick="testSNMP(${d.id})" title="Test SNMP">
+                            <button class="btn btn-icon btn-info" onclick="testSNMP(${Number(d.id)})" title="Test SNMP">
                                 <i class="fas fa-plug"></i>
                             </button>
-                            <button class="btn btn-icon ${devMutes.ids.has(d.id) ? 'btn-danger' : ''}" onclick="toggleDeviceMute(${d.id}, ${devMutes.ids.has(d.id) ? 1 : 0})" title="${devMutes.ids.has(d.id) ? 'Unmute alerts' : 'Mute alerts (maintenance)'}">
+                            <button class="btn btn-icon ${devMutes.ids.has(d.id) ? 'btn-danger' : ''}" onclick="toggleDeviceMute(${Number(d.id)}, ${devMutes.ids.has(d.id) ? 1 : 0})" title="${devMutes.ids.has(d.id) ? 'Unmute alerts' : 'Mute alerts (maintenance)'}">
                                 <i class="fas ${devMutes.ids.has(d.id) ? 'fa-bell-slash' : 'fa-bell'}"></i>
                             </button>
-                            <button class="btn btn-icon btn-danger action-delete" onclick="deleteDevice(${d.id})" title="Delete">
+                            <button class="btn btn-icon btn-danger action-delete" onclick="deleteDevice(${Number(d.id)})" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -286,7 +306,7 @@ function loadMonitoringDevices() {
             const options = ['<option value="">-- Pilih Device --</option>'];
             data.forEach(d => {
                 if (d.is_active == 1) {
-                    options.push(`<option value="${d.id}">${d.device_name} (${d.ip_address})</option>`);
+                    options.push(`<option value="${escHtml(d.id)}">${escHtml(d.device_name)} (${escHtml(d.ip_address)})</option>`);
                 }
             });
             sel.innerHTML = options.join('');
@@ -351,7 +371,7 @@ async function discoverSelectedInterfaces(silent = false) {
     const box = document.getElementById('monitoringContent');
 
     if (!silent) {
-        box.innerHTML = `<div class="alert info">🔍 Discovering (${vendor})...</div>`;
+        box.innerHTML = `<div class="alert info">🔍 Discovering (${escHtml(vendor)})...</div>`;
     }
 
     try {
@@ -486,21 +506,21 @@ function loadInterfaces(deviceId) {
 
                 html += `
 <tr>
-    <td class="text-center"><code>${i.if_index}</code></td>
+    <td class="text-center"><code>${escHtml(i.if_index)}</code></td>
     <td>
-        <b>${i.if_name}</b>
-        ${i.if_alias ? `<div class="iface-comment">${i.if_alias}</div>` : ''}
+        <b>${escHtml(i.if_name)}</b>
+        ${i.if_alias ? `<div class="iface-comment">${escHtml(i.if_alias)}</div>` : ''}
     </td>
     <td class="text-center">
     <span class="interface-badge ${i.interface_type === 'QSFP+' ? 'badge-qsfp' : 'badge-sfp'}">
-        ${i.interface_type}
+        ${escHtml(i.interface_type)}
     </span>
     </td>
     <td class="text-center">${txHtml}</td>
     <td class="text-center">${rxHtml}</td>
     <td class="text-center">${lossHtml}</td>
     <td class="text-center">
-        <span class="status-badge ${statusClass}">${status}</span>
+        <span class="status-badge ${statusClass}">${escHtml(status)}</span>
     </td>
 </tr>`;
             });
@@ -516,10 +536,10 @@ function loadInterfaces(deviceId) {
                 other.forEach(i => {
                     html += `
 <tr>
-<td class="text-center">${i.if_index}</td>
-<td>${i.if_name}</td>
-<td class="text-center">${i.if_alias || '-'}</td>
-<td class="text-center">${i.interface_type}</td>
+<td class="text-center">${escHtml(i.if_index)}</td>
+<td>${escHtml(i.if_name)}</td>
+<td class="text-center">${escHtml(i.if_alias || '-')}</td>
+<td class="text-center">${escHtml(i.interface_type)}</td>
 </tr>`;
                 });
                 html += `</tbody></table>`;
@@ -529,6 +549,6 @@ function loadInterfaces(deviceId) {
         })
         .catch(err => {
             console.error(err);
-            box.innerHTML = `<div class="alert error">❌ ${err.message}</div>`;
+            box.innerHTML = `<div class="alert error">❌ ${escHtml(err.message)}</div>`;
         });
 }

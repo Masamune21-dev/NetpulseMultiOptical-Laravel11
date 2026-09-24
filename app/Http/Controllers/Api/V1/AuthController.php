@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\DeviceToken;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
 use App\Support\SecurityLog;
@@ -11,6 +12,9 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
+    /** bcrypt dari string acak; hanya untuk menyamakan waktu respons username tak dikenal. */
+    private const DUMMY_HASH = '$2y$12$d9oOoOGKfOJBn8v5Qv5yOOr9udPJL8ygfIpOfs240utphUrPLPrq.';
+
     public function login(Request $request)
     {
         $data = $request->validate([
@@ -23,20 +27,18 @@ class AuthController extends Controller
             ->where('username', $data['username'])
             ->first();
 
-        if (!$user) {
-            SecurityLog::write('API_LOGIN_FAILED', $data['username'], $request->ip(), 'User not found');
+        // Kata sandi dulu, status aktif sesudahnya — lihat AuthController web. Akun nonaktif
+        // hanya diungkap kepada yang sudah memegang kata sandinya yang benar.
+        $passwordOk = Hash::check($data['password'], $user ? (string) $user->password : self::DUMMY_HASH);
+
+        if (!$user || !$passwordOk) {
+            SecurityLog::write('API_LOGIN_FAILED', $user->username ?? $data['username'], $request->ip(), $user ? 'Invalid password' : 'User not found');
             return response()->json(['error' => 'Invalid username or password'], 401);
         }
 
         if ((int) ($user->is_active ?? 1) !== 1) {
             SecurityLog::write('API_LOGIN_FAILED', $user->username, $request->ip(), 'Account disabled');
             return response()->json(['error' => 'Account is disabled'], 403);
-        }
-
-        // NP-5: fallback password plaintext dihapus (lihat users:hash-plaintext-passwords).
-        if (!Hash::check($data['password'], (string) $user->password)) {
-            SecurityLog::write('API_LOGIN_FAILED', $user->username, $request->ip(), 'Invalid password');
-            return response()->json(['error' => 'Invalid username or password'], 401);
         }
 
         $tokenName = $data['device_name'] ?? 'android';
@@ -66,6 +68,15 @@ class AuthController extends Controller
 
         $accessToken = PersonalAccessToken::findToken($token);
         if ($accessToken) {
+            // Lepas token FCM perangkat ini supaya HP yang sudah logout tidak terus menerima
+            // alert akun itu (dan bisa dipakai login akun lain tanpa bentrok kepemilikan).
+            $fcmToken = (string) $request->input('fcm_token', '');
+            if ($fcmToken !== '') {
+                DeviceToken::query()
+                    ->where('token', $fcmToken)
+                    ->where('user_id', $accessToken->tokenable_id)
+                    ->delete();
+            }
             $accessToken->delete();
         }
 

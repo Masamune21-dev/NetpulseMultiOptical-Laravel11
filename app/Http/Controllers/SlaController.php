@@ -98,9 +98,9 @@ class SlaController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Device', 'Interface', 'Alias', 'Down count', 'Total downtime', 'Downtime (sec)', 'Availability %', 'Status', 'Last down']);
+            $this->putCsv($out, ['Device', 'Interface', 'Alias', 'Down count', 'Total downtime', 'Downtime (sec)', 'Availability %', 'Status', 'Last down']);
             foreach ($rows as $r) {
-                fputcsv($out, [
+                $this->putCsv($out, [
                     $r['device_name'],
                     $r['if_name'],
                     $r['if_alias'],
@@ -213,16 +213,16 @@ class SlaController extends Controller
         return response()->streamDownload(function () use ($data) {
             $out = fopen('php://output', 'w');
             $m = $data['meta'];
-            fputcsv($out, ['Device', $m['device_name']]);
-            fputcsv($out, ['Interface', $m['if_name']]);
-            fputcsv($out, ['Alias', $m['if_alias']]);
-            fputcsv($out, ['Down count', $data['summary']['down_count']]);
-            fputcsv($out, ['Total downtime', $this->humanDuration($data['summary']['down_sec'])]);
-            fputcsv($out, ['Availability %', $data['summary']['availability']]);
-            fputcsv($out, []);
-            fputcsv($out, ['#', 'Down at', 'Up at', 'Duration', 'Duration (sec)']);
+            $this->putCsv($out, ['Device', $m['device_name']]);
+            $this->putCsv($out, ['Interface', $m['if_name']]);
+            $this->putCsv($out, ['Alias', $m['if_alias']]);
+            $this->putCsv($out, ['Down count', $data['summary']['down_count']]);
+            $this->putCsv($out, ['Total downtime', $this->humanDuration($data['summary']['down_sec'])]);
+            $this->putCsv($out, ['Availability %', $data['summary']['availability']]);
+            $this->putCsv($out, []);
+            $this->putCsv($out, ['#', 'Down at', 'Up at', 'Duration', 'Duration (sec)']);
             foreach ($data['events'] as $i => $e) {
-                fputcsv($out, [
+                $this->putCsv($out, [
                     $i + 1,
                     $e['down_at'],
                     $e['ongoing'] ? 'still down' : $e['up_at'],
@@ -350,5 +350,24 @@ class SlaController extends Controller
     {
         $d = (int) $request->query('days', 30);
         return max(1, min(365, $d));
+    }
+
+    /**
+     * fputcsv dengan pengaman injeksi formula. Nama perangkat dan ifAlias berasal dari
+     * perangkat/pengguna; sel yang diawali = + - @ tab atau CR dieksekusi sebagai formula
+     * saat CSV dibuka di Excel/LibreOffice. Sel teks seperti itu diawali tanda kutip tunggal.
+     * Nilai numerik (int/float) tidak disentuh.
+     */
+    private function putCsv($out, array $row): void
+    {
+        $safe = array_map(static function ($v) {
+            if (is_string($v) && $v !== '' && in_array($v[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+                return "'" . $v;
+            }
+
+            return $v;
+        }, $row);
+
+        fputcsv($out, $safe);
     }
 }

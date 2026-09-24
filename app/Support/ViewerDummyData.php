@@ -530,4 +530,96 @@ final class ViewerDummyData
         return $out;
     }
 
+    /**
+     * Pengganti GET /api/v1/interfaces untuk viewer (bentuk respons sama dengan aslinya).
+     * Dulu viewer menerima data interface asli lewat API mobile, padahal di web diberi dummy.
+     */
+    public static function apiInterfaces(int $page, int $perPage, int $deviceId = 0): array
+    {
+        $rows = [];
+        foreach (self::devices() as $dev) {
+            if ($deviceId > 0 && (int) $dev['id'] !== $deviceId) {
+                continue;
+            }
+            foreach (self::interfaces((int) $dev['id']) as $if) {
+                if ((int) $if['is_sfp'] !== 1) {
+                    continue;
+                }
+                $rows[] = [
+                    'history_24h' => str_repeat('g', 24),
+                    'id' => (int) $if['id'] + (int) $dev['id'] * 10,
+                    'device_id' => (int) $dev['id'],
+                    'device_name' => $dev['device_name'],
+                    'device_ip' => $dev['ip_address'],
+                    'if_index' => (int) $if['if_index'],
+                    'if_name' => $if['if_name'],
+                    'if_alias' => $if['if_alias'],
+                    'if_description' => null,
+                    'rx_power' => $if['rx_power'],
+                    'tx_power' => $if['tx_power'],
+                    'oper_status' => 1,
+                    'if_speed' => 10_000_000_000,
+                    'in_rate_bps' => 120_000_000,
+                    'out_rate_bps' => 45_000_000,
+                    'last_seen' => $if['last_seen'],
+                    'interface_type' => 'SFP+',
+                ];
+            }
+        }
+
+        $total = count($rows);
+        $lastPage = max(1, (int) ceil($total / max(1, $perPage)));
+
+        return [
+            'data' => array_values(array_slice($rows, ($page - 1) * $perPage, $perPage)),
+            'meta' => ['total' => $total, 'page' => $page, 'per_page' => $perPage, 'last_page' => $lastPage],
+        ];
+    }
+
+    /** Pengganti GET /api/v1/interfaces/traffic-history untuk viewer. */
+    public static function apiTrafficHistory(int $deviceId, int $ifIndex, string $range): array
+    {
+        $points = match ($range) {
+            '7d' => 56, '30d' => 60, '3mo', '6mo', '1y' => 60,
+            default => 24,
+        };
+        $step = match ($range) {
+            '7d' => 3 * 3600, '30d' => 12 * 3600, '3mo' => 36 * 3600, '6mo' => 72 * 3600, '1y' => 6 * 86400,
+            default => 3600,
+        };
+
+        $seed = ($deviceId * 31) + ($ifIndex * 7);
+        $now = time();
+        $data = [];
+        for ($i = $points - 1; $i >= 0; $i--) {
+            $t = $now - $i * $step;
+            $n = (($seed + $t) % 13) / 13.0;
+            $data[] = [
+                'created_at' => date('Y-m-d H:i:s', $t),
+                'in_rate_bps' => (int) (80_000_000 + $n * 60_000_000),
+                'out_rate_bps' => (int) (30_000_000 + $n * 25_000_000),
+            ];
+        }
+        $in = array_column($data, 'in_rate_bps');
+        $out = array_column($data, 'out_rate_bps');
+
+        return [
+            'meta' => [
+                'device_name' => 'RTR-CORE-DEMO',
+                'device_ip' => '10.10.0.1',
+                'if_name' => 'sfp-sfpplus1',
+                'if_alias' => 'Uplink-1',
+                'if_description' => null,
+                'if_speed' => 10_000_000_000,
+                'oper_status' => 1,
+                'interface_type' => 'SFP+',
+                'range' => $range,
+            ],
+            'data' => $data,
+            'summary' => [
+                'in_cur' => end($in), 'in_avg' => (int) (array_sum($in) / count($in)), 'in_max' => max($in),
+                'out_cur' => end($out), 'out_avg' => (int) (array_sum($out) / count($out)), 'out_max' => max($out),
+            ],
+        ];
+    }
 }

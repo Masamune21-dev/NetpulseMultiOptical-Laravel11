@@ -247,7 +247,8 @@ async function loadMapData() {
 function setNodeTooltipPermanent(marker, permanent) {
     if (!marker || !marker.nodeData) return;
     marker.unbindTooltip();
-    marker.bindTooltip(marker.nodeData.node_name, {
+    // Leaflet memperlakukan string tooltip sebagai HTML — nama node wajib di-escape.
+    marker.bindTooltip(escHtml(marker.nodeData.node_name), {
         permanent: permanent,
         direction: 'top',
         offset: [0, -28],
@@ -262,8 +263,8 @@ function createNodeMarker(node) {
 
     // Create custom HTML marker
     const markerHtml = `
-        <div class="node-marker" data-node-id="${node.id}">
-            <div class="node-icon ${node.node_type}" 
+        <div class="node-marker" data-node-id="${escHtml(node.id)}">
+            <div class="node-icon ${escHtml(node.node_type)}" 
                  style="background: var(--primary-gradient)">
                 <i class="fas ${icon.icon}"></i>
                 <div class="node-status ${node.status === 'OK' ? 'up' : 'down'}"></div>
@@ -587,10 +588,10 @@ function showNodeSidebar(node) {
                             ${node.interfaces.map(iface => `
                                 <tr>
                                     <td>
-                                        <code class="iface-name ${getPowerClass(parseFloat(iface.rx_power))}">${iface.if_name}</code>
+                                        <code class="iface-name ${getPowerClass(parseFloat(iface.rx_power))}">${escHtml(iface.if_name)}</code>
                                         ${iface.if_alias || iface.if_description ? `
                                             <div style="font-size:0.75rem;color:#94a3b8;margin-top:4px;">
-                                                ${iface.if_alias || iface.if_description}
+                                                ${escHtml(iface.if_alias || iface.if_description)}
                                             </div>
                                         ` : ''}
                                     </td>
@@ -620,12 +621,12 @@ function showNodeSidebar(node) {
     content.innerHTML = `
         <div class="node-info">
             <div class="node-header">
-                <div class="node-icon-large ${node.node_type}">
+                <div class="node-icon-large ${escHtml(node.node_type)}">
                     <i class="fas ${nodeIcons[node.node_type]?.icon || 'fa-server'} fa-2x"></i>
                 </div>
                 <div class="node-title">
-                    <h4>${node.node_name}</h4>
-                    <p class="node-subtitle">${node.device_name || 'No device linked'}</p>
+                    <h4>${escHtml(node.node_name)}</h4>
+                    <p class="node-subtitle">${escHtml(node.device_name || 'No device linked')}</p>
                 </div>
                 ${statusBadge}
             </div>
@@ -634,15 +635,15 @@ function showNodeSidebar(node) {
                 <div class="detail-grid">
                     <div class="detail-item">
                         <label><i class="fas fa-globe"></i> IP Address</label>
-                        <span>${node.ip_address || 'N/A'}</span>
+                        <span>${escHtml(node.ip_address || 'N/A')}</span>
                     </div>
                     <div class="detail-item">
                         <label><i class="fas fa-exchange-alt"></i> SNMP Version</label>
-                        <span>${node.snmp_version ? 'v' + node.snmp_version : 'N/A'}</span>
+                        <span>${escHtml(node.snmp_version ? 'v' + node.snmp_version : 'N/A')}</span>
                     </div>
                     <div class="detail-item">
                         <label><i class="fas fa-map-marker-alt"></i> Position</label>
-                        <span>(${node.x_position}, ${node.y_position})</span>
+                        <span>(${escHtml(node.x_position)}, ${escHtml(node.y_position)})</span>
                     </div>
                     <div class="detail-item">
                         <label><i class="fas fa-lock"></i> Status</label>
@@ -652,17 +653,17 @@ function showNodeSidebar(node) {
                 
                 <div class="node-actions">
                     ${node.device_id ? `
-                        <button class="btn btn-sm" onclick="testNodeSNMP(${node.device_id})">
+                        <button class="btn btn-sm" onclick="testNodeSNMP(${Number(node.device_id)})">
                             <i class="fas fa-plug"></i> Test SNMP
                         </button>
-                        <button class="btn btn-sm btn-outline" onclick="discoverNodeInterfaces(${node.device_id})">
+                        <button class="btn btn-sm btn-outline" onclick="discoverNodeInterfaces(${Number(node.device_id)})">
                             <i class="fas fa-search"></i> Discover Interfaces
                         </button>
                     ` : ''}
-                    <button class="btn btn-sm btn-primary action-edit" onclick="editNode(${node.id})">
+                    <button class="btn btn-sm btn-primary action-edit" onclick="editNode(${Number(node.id)})">
                         <i class="fas fa-edit"></i> Edit Node
                     </button>
-                    <button class="btn btn-sm btn-danger action-delete" onclick="deleteNodeQuick(${node.id})">
+                    <button class="btn btn-sm btn-danger action-delete" onclick="deleteNodeQuick(${Number(node.id)})">
                         <i class="fas fa-trash-alt"></i> Delete Node
                     </button>
                 </div>
@@ -721,8 +722,8 @@ async function loadAvailableDevices() {
 
         devices.forEach(device => {
             select.innerHTML += `
-                <option value="${device.id}">
-                    ${device.device_name} (${device.ip_address})
+                <option value="${escHtml(device.id)}">
+                    ${escHtml(device.device_name)} (${escHtml(device.ip_address)})
                 </option>
             `;
         });
@@ -1096,16 +1097,16 @@ function updateConnectionList() {
     list.innerHTML = manualLinks.map(link => `
         <div class="connection-item">
             <div>
-                <div><strong>${link.node_a_name}</strong> (${link.interface_a_name})</div>
+                <div><strong>${escHtml(link.node_a_name)}</strong> (${escHtml(link.interface_a_name)})</div>
                 <small>↔</small>
-                <div><strong>${link.node_b_name}</strong> (${link.interface_b_name})</div>
+                <div><strong>${escHtml(link.node_b_name)}</strong> (${escHtml(link.interface_b_name)})</div>
                 ${link.attenuation_db !== null ? `<small>Att: ${parseFloat(link.attenuation_db).toFixed(2)} dB</small>` : ''}
             </div>
             <div class="connection-actions">
-                <button class="btn btn-sm btn-outline" type="button" data-reset-connection="${link.id}">
+                <button class="btn btn-sm btn-outline" type="button" data-reset-connection="${escHtml(link.id)}">
                     <i class="fas fa-undo"></i>
                 </button>
-                <button class="btn btn-sm btn-danger" type="button" data-delete-connection="${link.id}">
+                <button class="btn btn-sm btn-danger" type="button" data-delete-connection="${escHtml(link.id)}">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -1118,7 +1119,7 @@ function populateNodeSelect(selectId) {
     if (!select) return;
     select.innerHTML = '<option value="">-- Select Node --</option>';
     nodes.forEach(node => {
-        select.innerHTML += `<option value="${node.id}">${node.node_name}</option>`;
+        select.innerHTML += `<option value="${escHtml(node.id)}">${escHtml(node.node_name)}</option>`;
     });
 }
 
@@ -1138,7 +1139,7 @@ async function populateInterfaceSelect(nodeId, selectId) {
             const label = alias ? `${name} (${alias})` : name;
             const rx = iface.rx_power !== null && iface.rx_power !== undefined ? iface.rx_power : '';
             const tx = iface.tx_power !== null && iface.tx_power !== undefined ? iface.tx_power : '';
-            select.innerHTML += `<option value="${iface.id}" data-rx="${rx}" data-tx="${tx}">${label}</option>`;
+            select.innerHTML += `<option value="${escHtml(iface.id)}" data-rx="${escHtml(rx)}" data-tx="${escHtml(tx)}">${escHtml(label)}</option>`;
         });
     } catch (e) {
         console.error('Error loading interfaces:', e);
@@ -1334,8 +1335,8 @@ function updateDeviceFilter() {
     nodes.forEach(node => {
         if (node.device_name) {
             select.innerHTML += `
-                <option value="${node.device_id}">
-                    ${node.device_name}
+                <option value="${escHtml(node.device_id)}">
+                    ${escHtml(node.device_name)}
                 </option>
             `;
         }

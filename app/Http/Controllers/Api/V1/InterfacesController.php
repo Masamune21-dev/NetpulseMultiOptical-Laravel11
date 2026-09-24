@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Support\RxThresholds;
+use App\Support\ViewerDummyData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -17,6 +18,16 @@ class InterfacesController extends Controller
 
         if (!in_array($role, ['admin', 'technician', 'viewer'], true)) {
             return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+        }
+
+        // Viewer = akun demo: data dummy, sama seperti halaman web (MonitoringController).
+        if ($role === 'viewer') {
+            $perPage = (int) $request->query('per_page', 25);
+            $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 25;
+            $dummy = ViewerDummyData::apiInterfaces(max(1, (int) $request->query('page', 1)), $perPage, (int) $request->query('device_id', 0));
+            $dummy['meta']['thresholds'] = RxThresholds::global();
+
+            return response()->json(['success' => true] + $dummy);
         }
 
         if (!Schema::hasTable('interfaces')) {
@@ -166,6 +177,10 @@ class InterfacesController extends Controller
 
         if ($deviceId <= 0 || $ifIndex <= 0) {
             return response()->json(['success' => false, 'error' => 'Missing device_id or if_index'], 400);
+        }
+
+        if ($role === 'viewer') {
+            return response()->json(['success' => true] + ViewerDummyData::apiTrafficHistory($deviceId, $ifIndex, $range));
         }
 
         // Short ranges read raw per-minute rows (kept ~30 days); longer ranges

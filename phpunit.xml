@@ -32,6 +32,8 @@
         <env name="APP_ROUTES_CACHE" value="/nonexistent/kv-test-routes.php"/>
         <env name="APP_EVENTS_CACHE" value="/nonexistent/kv-test-events.php"/>
         <env name="FIREBASE_SERVICE_ACCOUNT_JSON" value="/nonexistent/kv-test-fcm.json"/>
+        <!-- Test tidak boleh menulis ke storage/logs/laravel.log produksi. -->
+        <env name="LOG_CHANNEL" value="null"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

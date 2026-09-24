@@ -3,6 +3,26 @@
  */
 
 // Utility functions
+
+/**
+ * Escape teks sebelum disisipkan ke innerHTML / template literal / tooltip Leaflet.
+ *
+ * WAJIB untuk setiap nilai yang berasal dari server atau perangkat: nama perangkat, IP,
+ * ifName/ifAlias (deskripsi port yang bisa ditulis siapa pun yang punya akses switch),
+ * pesan error, dsb. Tanpa ini, deskripsi port berisi `<img onerror=...>` dijalankan di
+ * sesi admin (stored XSS). Dimuat di layout sebelum skrip halaman, jadi tersedia global.
+ */
+function escHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+window.escHtml = escHtml;
+
 function formatBytes(bytes) {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -157,7 +177,7 @@ function showNotification(message, type = 'info', duration = 5000) {
             <i class="fas fa-${getNotificationIcon(type)}"></i>
         </div>
         <div class="toast-body">
-            <div class="toast-message">${message}</div>
+            <div class="toast-message">${escHtml(message)}</div>
         </div>
         <button class="toast-close" aria-label="Close">
             <i class="fas fa-times"></i>

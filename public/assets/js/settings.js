@@ -339,7 +339,7 @@ function renderMobileDevices(rows) {
                     ${escapeHtml(lastSeen)}
                     <div style="margin-top:6px">
                         <button class="btn btn-danger action-delete" style="padding:4px 10px;font-size:.75rem"
-                                onclick="revokeMobileDevice(${r.id})">
+                                onclick="revokeMobileDevice(${Number(r.id)})">
                             <i class="fas fa-trash"></i> Revoke
                         </button>
                     </div>
@@ -369,7 +369,7 @@ function refreshMobilePushTargets() {
             const opts = [`<option value="all">All Devices (${total})</option>`];
             users.forEach(u => {
                 const label = u.name ? `${escapeHtml(u.name)} (user #${u.id})` : `User #${u.id}`;
-                opts.push(`<option value="user:${u.id}">${label}</option>`);
+                opts.push(`<option value="user:${escapeHtml(u.id)}">${label}</option>`);
             });
             sel.innerHTML = opts.join('');
 
@@ -661,10 +661,10 @@ function renderLogs(raw) {
 
         rows.push(`
             <div class="log-row">
-                <div class="log-time">${time}</div>
-                <div class="log-ip">${ip}</div>
-                <div class="log-event ${cls}">${event}</div>
-                <div class="log-details">${details}</div>
+                <div class="log-time">${escapeHtml(time)}</div>
+                <div class="log-ip">${escapeHtml(ip)}</div>
+                <div class="log-event ${cls}">${escapeHtml(event)}</div>
+                <div class="log-details">${escapeHtml(details)}</div>
             </div>
         `);
     });

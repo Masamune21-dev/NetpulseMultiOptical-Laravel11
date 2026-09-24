@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\DeviceToken;
+use App\Models\PersonalAccessToken;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class DeviceTokenController extends Controller
@@ -19,6 +21,16 @@ class DeviceTokenController extends Controller
         $user = $request->user();
 
         $model = DeviceToken::query()->firstOrNew(['token' => $data['token']]);
+
+        // Token milik pengguna lain hanya boleh pindah kalau pemilik lamanya sudah tidak
+        // punya sesi API aktif (sudah logout di semua perangkat) — itulah kasus HP bersama
+        // yang sah. Dulu firstOrNew() selalu menimpa user_id, sehingga siapa pun yang tahu
+        // token FCM HP orang lain bisa membelokkan alert-nya ke akun sendiri.
+        if ($model->exists && (int) $model->user_id !== (int) $user->id
+            && $this->ownerStillSignedIn((int) $model->user_id)) {
+            return response()->json(['error' => 'Token already registered'], 409);
+        }
+
         $model->fill([
             'user_id' => $user->id,
             'platform' => $data['platform'] ?? $model->platform,
@@ -29,5 +41,13 @@ class DeviceTokenController extends Controller
 
         return response()->json(['success' => true]);
     }
-}
 
+    private function ownerStillSignedIn(int $userId): bool
+    {
+        return PersonalAccessToken::query()
+            ->where('tokenable_type', (new User())->getMorphClass())
+            ->where('tokenable_id', $userId)
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->exists();
+    }
+}

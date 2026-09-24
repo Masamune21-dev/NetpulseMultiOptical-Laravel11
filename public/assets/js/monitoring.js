@@ -62,8 +62,8 @@ function loadDevices() {
 
             devices.forEach(d => {
                 deviceSelect.innerHTML += `
-                    <option value="${d.id}">
-                        ${d.device_name}
+                    <option value="${escHtml(d.id)}">
+                        ${escHtml(d.device_name)}
                     </option>`;
             });
         });
@@ -81,10 +81,10 @@ deviceSelect.addEventListener('change', () => {
         .then(ifs => {
             ifs.forEach(i => {
                 interfaceSelect.innerHTML += `
-                    <option value="${i.if_index}"
-                            data-name="${i.if_name}"
-                            data-alias="${i.if_alias || ''}">
-                        ${i.if_name}${i.if_alias ? ' — ' + i.if_alias : ''}
+                    <option value="${escHtml(i.if_index)}"
+                            data-name="${escHtml(i.if_name)}"
+                            data-alias="${escHtml(i.if_alias || '')}">
+                        ${escHtml(i.if_name)}${i.if_alias ? ' — ' + escHtml(i.if_alias) : ''}
                     </option>`;
             });
         });
@@ -98,8 +98,8 @@ interfaceSelect.addEventListener('change', () => {
     const alias = opt.dataset.alias;
 
     document.getElementById('ifaceInfo').innerHTML = alias
-        ? `Interface: <b>${name}</b> <span style="color:#64748b">(${alias})</span>`
-        : `Interface: <b>${name}</b>`;
+        ? `Interface: <b>${escHtml(name)}</b> <span style="color:#64748b">(${escHtml(alias)})</span>`
+        : `Interface: <b>${escHtml(name)}</b>`;
 
     loadChart();
     startAutoRefresh();

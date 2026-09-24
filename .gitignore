@@ -53,3 +53,10 @@ yarn-error.log*
 .DS_Store
 
 /public/downloads/*.apk
+
+# Kunci penandatanganan APK rilis — JANGAN pernah di-commit (repo ini publik).
+*.jks
+*.keystore
+*.p12
+key.properties
+mobile/android/key.properties

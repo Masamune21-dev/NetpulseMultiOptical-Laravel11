@@ -165,8 +165,12 @@ Route::middleware(['legacy.auth'])->group(function () {
     Route::get('/api/map_devices', [MapApiController::class, 'devices']);
 
     // NP-6: discovery menulis DB → POST + CSRF (pemanggil: devices.js, map.js).
-    Route::post('/api/discover_interfaces', DiscoverInterfacesController::class);
-    Route::post('/api/huawei_discover_optics', DiscoverInterfacesController::class);
+    // Technician memang boleh menjalankan discovery (matriks peran di docs), viewer mendapat
+    // hasil dummy dari controller. Peran eksplisit supaya peran lain/tak dikenal ditolak.
+    Route::post('/api/discover_interfaces', DiscoverInterfacesController::class)
+        ->middleware('legacy.role:admin,technician,viewer');
+    Route::post('/api/huawei_discover_optics', DiscoverInterfacesController::class)
+        ->middleware('legacy.role:admin,technician,viewer');
 
     Route::match(['GET', 'POST'], '/api/settings', [SettingsApiController::class, 'settings'])
         ->middleware('legacy.role:admin,technician,viewer');

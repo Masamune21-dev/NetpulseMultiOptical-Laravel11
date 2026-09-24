@@ -34,6 +34,9 @@ export APP_EVENTS_CACHE=/nonexistent/kv-test-events.php
 # phpunit.xml memasang yang sama; ini lapis kedua.
 export FIREBASE_SERVICE_ACCOUNT_JSON=/nonexistent/kv-test-fcm.json
 
+# Log test (termasuk exception yang sengaja dipicu) jangan masuk laravel.log produksi.
+export LOG_CHANNEL=null
+
 # --- Pengaman 1: path pengalihan memang tidak boleh ada -----------------------
 for p in "$APP_CONFIG_CACHE" "$APP_ROUTES_CACHE" "$APP_EVENTS_CACHE"; do
     if [ -e "$p" ]; then

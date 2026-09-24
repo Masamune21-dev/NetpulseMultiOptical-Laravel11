@@ -23,7 +23,11 @@ return new class extends Migration
                 continue;
             }
 
-            Schema::create($name, function (Blueprint $table) {
+            // Lihat 2026_06_15_000001: nama indeks SQLite per database, MariaDB per tabel.
+            // Awalan hanya di SQLite (test); skema MariaDB produksi tidak berubah.
+            $prefix = Schema::getConnection()->getDriverName() === 'sqlite' ? $name . '_' : '';
+
+            Schema::create($name, function (Blueprint $table) use ($prefix) {
                 $table->bigIncrements('id');
                 $table->unsignedInteger('device_id');
                 $table->unsignedInteger('if_index');
@@ -39,8 +43,8 @@ return new class extends Migration
 
                 $table->unsignedInteger('samples')->default(0);
 
-                $table->unique(['device_id', 'if_index', 'bucket'], 'uniq_traf_dev_if_bucket');
-                $table->index(['device_id', 'if_index', 'bucket'], 'idx_traf_dev_if_bucket');
+                $table->unique(['device_id', 'if_index', 'bucket'], $prefix . 'uniq_traf_dev_if_bucket');
+                $table->index(['device_id', 'if_index', 'bucket'], $prefix . 'idx_traf_dev_if_bucket');
             });
         }
     }

@@ -4,6 +4,76 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Fixed: Temuan Review Keamanan setelah Repo Dijadikan Publik
+
+Kode kini bisa dibaca siapa pun, jadi celah yang tadinya "tersembunyi" diperlakukan sebagai
+terbuka. Tidak ada Kritis/Tinggi di kode; yang ditambal:
+
+- **Fixed (S1, stored XSS)**: nilai dari server/perangkat — nama perangkat, IP, `ifName`/`ifAlias`
+  (deskripsi port bisa ditulis siapa pun yang punya akses switch), pesan error — disisipkan ke
+  `innerHTML`/template literal tanpa escape di `map.js`, `monitoring.js`, `devices.js`, `users.js`,
+  toast `script.js`, dan tooltip Leaflet (string tooltip = HTML). Helper global `escHtml()` di
+  `script.js` (dimuat layout sebelum skrip halaman) kini membungkus setiap nilai itu.
+  `onclick='editDevice(${JSON.stringify(d)})'` & `editUser(...)`/`deleteUser(..., 'username')`
+  diganti `data-*` + satu event listener (JSON/kutip di atribut membuka celah dan pecah oleh `'`).
+  **Log keamanan di Pengaturan** juga dirender mentah: username yang diketik di form login ikut
+  tercatat, jadi siapa pun dari internet bisa menyisipkan HTML ke halaman admin lewat login
+  gagal — kini di-escape.
+- **Fixed (S3)**: `POST /api/v1/push/test` mengirim ke token FCM dari body → siapa pun (termasuk
+  viewer) bisa mengirim notifikasi bebas ke HP orang lain. Kini hanya ke token milik pemanggil;
+  parameter `token` diabaikan (aplikasi memang tidak mengirimnya).
+- **Fixed (S2)**: disk `local` `'serve' => false` — rute publik `GET storage/{path}` hilang (tak
+  ada kode yang memakainya; gambar push lewat disk `public`/symlink). Laravel 11 sudah EOL:
+  upgrade ke 12 dicatat sebagai pekerjaan terpisah.
+- **Fixed (R1)**: `device-token` tidak lagi mengalihkan token FCM milik user lain yang masih
+  punya sesi API aktif (409). Token boleh pindah bila pemilik lama sudah logout di semua
+  perangkat (HP bersama). Logout API kini menerima `fcm_token` dan melepasnya; aplikasi mengirimnya.
+- **Fixed (R2)**: ganti kata sandi, peran, atau status aktif — dan hapus user — mencabut semua
+  token API & token push user itu. Sesi web sudah ikut lewat `UserState`.
+- **Fixed (R3)**: viewer mendapat data dummy di `/api/v1/interfaces` dan `traffic-history`
+  (`ViewerDummyData::apiInterfaces/apiTrafficHistory`), sama seperti halaman web.
+- **Changed (R4)**: `discover_interfaces` & `huawei_discover_optics` kini ber-`legacy.role:admin,
+  technician,viewer` — technician memang boleh discovery (matriks peran di docs), viewer dapat
+  dummy; peran lain/tak dikenal ditolak.
+- **Fixed (R5)**: kata sandi dicek SEBELUM status aktif (web & API) — "akun nonaktif" hanya
+  diungkap kepada pemegang kata sandi benar; username tak dikenal menjalankan `Hash::check`
+  tiruan (waktu respons setara). Limiter login kedua: 20/menit per IP (anti password spraying),
+  di samping 5/menit per username+IP.
+- **Fixed (R8)**: ekspor CSV SLA menetralkan sel berawalan `= + - @ \t \r` (injeksi formula).
+- **Fixed (R10)**: peran user wajib `admin|technician|viewer`, kata sandi minimal 8 karakter.
+- **Changed (R7)**: `LOG_LEVEL=warning` (dari `debug`); `.env` tetap `640 root:www-data`;
+  `config:cache` + `route:cache` dijalankan (`routes-v7.php` dikembalikan ke `www-data 664`).
+- **Changed (R9, aplikasi)**: `usesCleartextTraffic="false"` di rilis (debug tetap boleh lewat
+  manifest debug); token Bearer pindah ke `flutter_secure_storage` (migrasi otomatis dari
+  SharedPreferences, lalu dihapus dari sana); API Base URL hanya bisa diubah di build debug dan
+  nilai tersimpan diabaikan di rilis. **Perlu rilis APK baru (naikkan dari 2.1.1+7).**
+- **Changed**: `.gitignore` + `*.jks`, `*.keystore`, `*.p12`, `key.properties` (APK rilis masih
+  ditandatangani kunci debug — penyiapan keystore rilis menunggu).
+- **Fixed (test)**: migrasi rollup `2026_06_15_000001/000002` memakai nama indeks yang sama untuk
+  dua tabel — sah di MariaDB (per tabel), bentrok di SQLite (per database). Awalan nama tabel kini
+  dipasang **hanya di SQLite**; skema MariaDB produksi & instalasi baru tidak berubah. Test
+  ber-`RefreshDatabase` jadi bisa dipakai. Test juga tidak lagi menulis ke `laravel.log`
+  produksi (`LOG_CHANNEL=null` di `phpunit.xml` + `scripts/test.sh`).
+
+### Verifikasi
+
+- `bash scripts/test.sh`: **14 lulus** (57 assertion) — 12 test baru di
+  `tests/Feature/SecurityHardeningTest.php` (S3, R1, logout, R2, R10, R3, R4, R5, limiter per IP,
+  R8). Dua di antaranya dibuktikan gagal terhadap kode lama. Tabel `users` produksi berskema lama
+  (username/role/is_active) — kolomnya ditambahkan di `setUp` test.
+- `node --check` semua JS yang diubah; `escHtml` diuji dengan payload `<img onerror>`.
+- `flutter analyze lib`: bersih. APK tidak dibangun.
+- Situs: `/login` 200, `/healthz` 200, `/storage/*` kini 404, `script.js` baru tersaji.
+- Nginx (HSTS, CSP, `client_max_body_size`) **tidak** diubah — usulan ada di laporan sesi.
+- **Changed (repo publik)**: 6 tangkapan layar lama di `public/assets/img/` dihapus (dashboard, map, monitoring,
+  olt, seting-tema, setting-logs) — tidak dirujuk kode maupun README, dan sebagian memuat data operasional
+  asli (lokasi node di peta, daftar MAC ONU). `loginpage.png` (dipakai README) dipertahankan.
+- **Changed (server, di luar repo)**: nginx vhost memakai snippet baru `snippets/netpulse-headers.conf`
+  (header bersama `kv-security-headers.conf` + HSTS + `X-Frame-Options` + **CSP mode Report-Only**) di
+  server block DAN kedua location `.apk` (add_header di location dulu menghapus header warisan);
+  `client_max_body_size` 64M → 8M. Cadangan vhost lama: `/root/netpulse.kusumavision.net.bak-20260924`.
+  CSP dijadikan penegak (ganti nama header) setelah konsol browser bersih dari pelanggaran.
+
 ## 2026-09-24 — Fixed: test PHP bisa mengenai MariaDB produksi → `scripts/test.sh`
 
 - **Fixed**: `php artisan test` di checkout ini resolve ke MariaDB `netpulse` produksi — config cache

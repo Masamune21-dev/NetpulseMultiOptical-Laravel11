@@ -23,17 +23,17 @@ class PushTestController extends Controller
         $data = $request->validate([
             'title' => ['nullable', 'string', 'max:120'],
             'body' => ['nullable', 'string', 'max:300'],
-            'token' => ['nullable', 'string', 'max:4096'],
         ]);
 
-        $token = (string) ($data['token'] ?? '');
-        if ($token === '') {
-            $token = (string) (DeviceToken::query()
-                ->where('user_id', $user->id)
-                ->orderByDesc('last_seen_at')
-                ->orderByDesc('id')
-                ->value('token') ?? '');
-        }
+        // Hanya ke perangkat milik pemanggil sendiri. Dulu parameter `token` dari body
+        // dipakai apa adanya, sehingga pengguna mana pun (termasuk viewer) bisa mengirim
+        // notifikasi berjudul & berisi bebas ke HP orang lain atas nama Netpulse.
+        // Aplikasi mobile tidak pernah mengirim `token`; bila dikirim, diabaikan.
+        $token = (string) (DeviceToken::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('last_seen_at')
+            ->orderByDesc('id')
+            ->value('token') ?? '');
 
         if ($token === '') {
             return response()->json(['error' => 'No device token found for user'], 400);

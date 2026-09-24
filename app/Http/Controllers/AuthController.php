@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
+    /** bcrypt dari string acak; hanya untuk menyamakan waktu respons username tak dikenal. */
+    private const DUMMY_HASH = '$2y$12$d9oOoOGKfOJBn8v5Qv5yOOr9udPJL8ygfIpOfs240utphUrPLPrq.';
+
     public function showLogin()
     {
         return view('auth.login');
@@ -28,21 +31,20 @@ class AuthController extends Controller
             ->where('username', $username)
             ->first();
 
-        if (!$user) {
-            $this->writeSecurityLog('LOGIN_FAILED', $username, $ip, 'User not found');
+        // Urutan pemeriksaan sengaja: kata sandi dulu, baru status aktif. Dulu akun nonaktif
+        // dijawab "Account is disabled" SEBELUM kata sandi dicek, sehingga siapa pun bisa
+        // memastikan username mana yang ada. Username tak dikenal tetap menjalankan satu
+        // Hash::check tiruan supaya waktu respons tidak membocorkannya.
+        $passwordOk = Hash::check($data['password'], $user ? (string) $user->password : self::DUMMY_HASH);
+
+        if (!$user || !$passwordOk) {
+            $this->writeSecurityLog('LOGIN_FAILED', $user->username ?? $username, $ip, $user ? 'Invalid password' : 'User not found');
             return back()->withErrors(['username' => 'Invalid username or password'])->withInput();
         }
 
         if ((int) $user->is_active !== 1) {
             $this->writeSecurityLog('LOGIN_FAILED', $user->username, $ip, 'Account disabled');
             return back()->withErrors(['username' => 'Account is disabled. Contact administrator.'])->withInput();
-        }
-
-        // NP-5: fallback password plaintext dihapus; semua users.password sudah
-        // di-hash (command users:hash-plaintext-passwords).
-        if (!Hash::check($data['password'], (string) $user->password)) {
-            $this->writeSecurityLog('LOGIN_FAILED', $user->username, $ip, 'Invalid password');
-            return back()->withErrors(['username' => 'Invalid username or password'])->withInput();
         }
 
         $request->session()->regenerate();

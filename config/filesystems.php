@@ -33,7 +33,10 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Dimatikan: `serve` mendaftarkan rute publik GET storage/{path} tanpa middleware
+            // auth. Tidak ada kode yang memakai disk ini untuk disajikan; gambar push memakai
+            // disk `public` (symlink public/storage).
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

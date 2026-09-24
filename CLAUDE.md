@@ -29,6 +29,7 @@ bash bin/build-apk.sh                # Kompilasi Flutter APK (hasil: public/down
 ## Test
 
 Jalankan **hanya** `bash scripts/test.sh` / `composer test` — checkout ini produksi (MariaDB `netpulse`,
-config cache aktif) dan `php artisan test` polos akan mengenai database produksi. Migrasi belum
-kompatibel sqlite (nama indeks `uniq_dev_if_bucket` ganda), jadi test ber-`RefreshDatabase` belum bisa
-dipakai sampai itu dibereskan (lihat WORKLOG 2026-09-24).
+config cache aktif) dan `php artisan test` polos akan mengenai database produksi. `RefreshDatabase`
+bisa dipakai sejak 24 Sep 2026. Tabel inti lama (`snmp_devices`, `interfaces`, `users` berkolom
+username/role/is_active) **tidak** dibuat oleh migrasi — test yang membutuhkannya menyiapkan
+kolom/tabelnya sendiri (contoh: `tests/Feature/SecurityHardeningTest::setUp`).

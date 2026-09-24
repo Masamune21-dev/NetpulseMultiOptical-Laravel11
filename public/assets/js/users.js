@@ -85,7 +85,7 @@ function loadUsers(silent = false) {
         .catch(error => {
             console.error('Error loading users:', error);
             if (!tbody.dataset.loaded) {
-                tbody.innerHTML = `<tr><td colspan="6" class="error">Error: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="error">Error: ${escHtml(error.message)}</td></tr>`;
             }
             if (!silent) showAlert('error', `Failed to load users: ${error.message}`);
         });
@@ -128,10 +128,10 @@ function renderUsersTable(users) {
 
         return `
             <tr${rowStyle}>
-                <td style="text-align:center"><code>${u.id}</code></td>
+                <td style="text-align:center"><code>${escHtml(u.id)}</code></td>
                 <td>
                     <div class="usr-cell">
-                        <div class="usr-avatar ${avatarClass}">${initials}</div>
+                        <div class="usr-avatar ${avatarClass}">${escHtml(initials)}</div>
                         <div>
                             <div class="usr-name">${escapeHtml(u.username)}${youBadge}</div>
                             <div class="usr-fullname">${escapeHtml(u.full_name || '')}</div>
@@ -140,7 +140,7 @@ function renderUsersTable(users) {
                 </td>
                 <td style="text-align:center">
                     <span class="role-badge ${roleClass}">
-                        <i class="fas ${roleIcon}"></i> ${u.role}
+                        <i class="fas ${roleIcon}"></i> ${escHtml(u.role)}
                     </span>
                 </td>
                 <td style="text-align:center">
@@ -151,11 +151,11 @@ function renderUsersTable(users) {
                 </td>
                 <td class="actions-cell" style="text-align:center">
                     <div class="action-buttons">
-                        <button class="btn btn-icon btn-edit action-edit" onclick='editUser(${JSON.stringify(u)})' title="Edit">
+                        <button class="btn btn-icon btn-edit action-edit" data-edit-user="${escHtml(u.id)}" title="Edit">
                             <i class="fas fa-edit"></i>
                         </button>
                         <button class="btn btn-icon btn-danger action-delete"
-                            onclick="deleteUser(${u.id}, '${escapeHtml(u.username)}')" title="Delete">
+                            data-delete-user="${escHtml(u.id)}" title="Delete">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -164,7 +164,33 @@ function renderUsersTable(users) {
         `;
     }).join('');
 
+    // Data baris disimpan di peta; tombol hanya membawa id. JSON/username di atribut onclick
+    // pecah oleh tanda kutip dan membuka celah XSS (escapeHtml berbasis textContent tidak
+    // meng-escape kutip).
+    userRowsById = new Map(users.map(u => [String(u.id), u]));
     tbody.innerHTML = html;
+    bindUserTableActions(tbody);
+}
+
+let userRowsById = new Map();
+let userTableBound = false;
+
+function bindUserTableActions(tbody) {
+    if (userTableBound) return;
+    userTableBound = true;
+    tbody.addEventListener('click', (e) => {
+        const edit = e.target.closest('[data-edit-user]');
+        if (edit) {
+            const u = userRowsById.get(edit.dataset.editUser);
+            if (u) editUser(u);
+            return;
+        }
+        const del = e.target.closest('[data-delete-user]');
+        if (del) {
+            const u = userRowsById.get(del.dataset.deleteUser);
+            if (u) deleteUser(Number(u.id), u.username);
+        }
+    });
 }
 
 // ===============================
