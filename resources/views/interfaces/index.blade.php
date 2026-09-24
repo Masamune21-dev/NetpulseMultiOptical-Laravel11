@@ -56,10 +56,25 @@
             <span class="mon-refresh-badge if-count-badge" id="ifCount">0 interfaces</span>
         </div>
 
+        @if(($currentUser['role'] ?? '') === 'admin')
+        {{-- Aksi massal: muncul begitu ada port yang dicentang (pilihan bertahan lintas halaman/filter). --}}
+        <div class="if-bulk-bar" id="ifBulkBar" hidden role="region" aria-label="Aksi untuk port terpilih">
+            <span class="if-bulk-count"><i class="fas fa-square-check"></i> <b id="ifBulkCount">0</b> port dipilih</span>
+            <div class="if-bulk-actions">
+                <button type="button" class="btn btn-danger" id="ifBulkOff"><i class="fas fa-eye-slash"></i> Tandai tidak dipakai</button>
+                <button type="button" class="btn" id="ifBulkOn"><i class="fas fa-eye"></i> Pantau lagi</button>
+                <button type="button" class="btn btn-outline" id="ifBulkClear"><i class="fas fa-xmark"></i> Batal pilih</button>
+            </div>
+        </div>
+        @endif
+
         <div class="if-table-wrap">
             <table class="table" id="ifTable">
                 <thead>
                     <tr>
+                        @if(($currentUser['role'] ?? '') === 'admin')
+                        <th class="if-sel-col"><input type="checkbox" id="ifSelectAll" aria-label="Pilih semua port di halaman ini"></th>
+                        @endif
                         <th style="width:13%">Device</th>
                         <th style="width:11%">Interface</th>
                         <th style="width:15%">Description</th>

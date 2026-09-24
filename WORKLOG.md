@@ -4,6 +4,20 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Created: Pilih Banyak Port di Halaman Interfaces
+
+- **Created**: kotak centang per baris + "pilih semua di halaman ini" (hanya admin) di `/interfaces`.
+  Begitu ada port terpilih muncul bilah aksi lengket: **"N port dipilih · Tandai tidak dipakai (x) ·
+  Pantau lagi (y) · Batal pilih"** — tombol hanya tampil bila ada port yang relevan (yang masih dipantau
+  untuk ditandai, yang nonaktif untuk dipantau lagi). Keduanya memakai dialog `portMonitoring.open()`
+  yang sama (alasan opsional) dan endpoint `POST /api/interfaces/monitoring` (maks. 500 port, sudah ada).
+- **Notes**: pilihan disimpan per `device:ifIndex` dan bertahan saat pindah halaman / ganti filter,
+  jadi port dari beberapa halaman bisa ditandai sekaligus; status pantau yang tersimpan diperbarui tiap
+  render. Setelah sukses, port yang diproses dilepas dari pilihan. `colspan` baris kosong/muat/galat kini
+  mengikuti jumlah kolom (11 admin, 10 lainnya). Diverifikasi di 1440/1280/390 px (tanpa scroll
+  horizontal halaman, tanpa galat konsol) memakai akun admin sementara yang sudah dihapus; dialog
+  dibuka lalu dibatalkan, tidak ada port yang diubah. Test: 52 lulus.
+
 ## 2026-09-24 — Docs: Screenshot README (Data Demo)
 
 - **Created**: bagian **Screenshots** di `README.md` — dashboard web (`readme-dashboard.webp`) dan galeri

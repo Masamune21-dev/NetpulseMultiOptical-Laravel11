@@ -717,3 +717,60 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* Pilih banyak port (admin) */
+.if-sel-col {
+    text-align: center;
+    width: 36px;
+}
+
+.if-sel-col input {
+    accent-color: var(--ink);
+    cursor: pointer;
+    height: 18px;
+    width: 18px;
+}
+
+.if-table-wrap .table tr.if-row-selected td {
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.if-bulk-bar {
+    align-items: center;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: 3px 3px 0 var(--ink);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    justify-content: space-between;
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+}
+
+.if-bulk-bar[hidden],
+.if-bulk-actions .btn[hidden] {
+    display: none;
+}
+
+.if-bulk-count {
+    color: var(--text);
+    font-weight: 800;
+}
+
+.if-bulk-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+@media (max-width: 640px) {
+    .if-bulk-actions,
+    .if-bulk-actions .btn {
+        width: 100%;
+    }
+}

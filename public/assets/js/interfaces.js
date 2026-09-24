@@ -16,6 +16,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         loadDeviceOptions();
         wireFilters();
+        wireBulk();
         fetchInterfaces();
 
         if (window.netpulseRefresh && typeof window.netpulseRefresh.register === 'function') {
@@ -105,7 +106,7 @@
     async function fetchInterfaces(silent = false) {
         const tbody = document.getElementById('ifTableBody');
         if (!silent && !tbody.dataset.loaded) {
-            tbody.innerHTML = `<tr><td colspan="10" class="if-empty"><i class="fas fa-circle-notch fa-spin"></i> Loading...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${colCount()}" class="if-empty"><i class="fas fa-circle-notch fa-spin"></i> Loading...</td></tr>`;
         }
 
         const params = new URLSearchParams();
@@ -136,7 +137,7 @@
     function renderRows(rows) {
         const tbody = document.getElementById('ifTableBody');
         if (!rows.length) {
-            tbody.innerHTML = `<tr><td colspan="10" class="if-empty">No interfaces found</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${colCount()}" class="if-empty">No interfaces found</td></tr>`;
             return;
         }
 
@@ -172,8 +173,16 @@
             const reason = !monitored && r.unmonitored_reason
                 ? `<div class="if-pm-reason" title="${escapeHtml(r.unmonitored_reason)}">${escapeHtml(r.unmonitored_reason)}</div>` : '';
 
+            const key = selKey(r.device_id, r.if_index);
+            const selCell = isAdmin()
+                ? `<td class="if-sel-col"><input type="checkbox" class="if-sel" data-key="${escapeHtml(key)}"
+                        data-device="${r.device_id}" data-ifindex="${r.if_index}" data-monitored="${monitored ? '1' : '0'}"
+                        data-label="${escapeHtml(label)}" aria-label="Pilih ${escapeHtml(label)}" ${selected.has(key) ? 'checked' : ''}></td>`
+                : '';
+
             return `
-                <tr class="${monitored ? '' : 'pm-row-off'}">
+                <tr class="${monitored ? '' : 'pm-row-off'}${selected.has(key) ? ' if-row-selected' : ''}">
+                    ${selCell}
                     <td>
                         <div class="if-cell-device">
                             <span class="if-device-name">${deviceLabel}</span>
@@ -229,6 +238,87 @@
             btn.addEventListener('click', () => {
                 openThresholdModal(parseInt(btn.dataset.device, 10), parseInt(btn.dataset.ifindex, 10));
             });
+        });
+        tbody.querySelectorAll('.if-sel').forEach(cb => {
+            if (cb.checked) toggleSelected(cb, true); // perbarui status pantau yang tersimpan
+            cb.addEventListener('change', () => { toggleSelected(cb, cb.checked); syncSelectionUi(); });
+        });
+        syncSelectionUi();
+    }
+
+    // ---- Pilih banyak port (admin) ------------------------------------------------
+    // Pilihan disimpan per "device:ifIndex" dan bertahan saat pindah halaman / ganti
+    // filter, supaya port dari beberapa halaman bisa ditandai sekaligus.
+    const selected = new Map();
+
+    function selKey(deviceId, ifIndex) { return `${deviceId}:${ifIndex}`; }
+
+    function colCount() { return isAdmin() ? 11 : 10; }
+
+    function toggleSelected(cb, on) {
+        const key = cb.dataset.key;
+        if (on) {
+            selected.set(key, {
+                device_id: parseInt(cb.dataset.device, 10),
+                if_index: parseInt(cb.dataset.ifindex, 10),
+                label: cb.dataset.label,
+                monitored: cb.dataset.monitored === '1',
+            });
+        } else {
+            selected.delete(key);
+        }
+        const tr = cb.closest('tr');
+        if (tr) tr.classList.toggle('if-row-selected', on);
+    }
+
+    function syncSelectionUi() {
+        const bar = document.getElementById('ifBulkBar');
+        if (!bar) return;
+        const items = [...selected.values()];
+        bar.hidden = items.length === 0;
+        document.getElementById('ifBulkCount').textContent = items.length;
+
+        const toOff = items.filter(i => i.monitored).length;
+        const toOn = items.length - toOff;
+        const off = document.getElementById('ifBulkOff');
+        const on = document.getElementById('ifBulkOn');
+        off.hidden = toOff === 0;
+        on.hidden = toOn === 0;
+        off.innerHTML = `<i class="fas fa-eye-slash"></i> Tandai tidak dipakai (${toOff})`;
+        on.innerHTML = `<i class="fas fa-eye"></i> Pantau lagi (${toOn})`;
+
+        const all = document.getElementById('ifSelectAll');
+        const boxes = [...document.querySelectorAll('#ifTableBody .if-sel')];
+        if (all) {
+            const checked = boxes.filter(b => b.checked).length;
+            all.checked = boxes.length > 0 && checked === boxes.length;
+            all.indeterminate = checked > 0 && checked < boxes.length;
+        }
+    }
+
+    function bulkApply(monitored) {
+        const items = [...selected.values()].filter(i => i.monitored !== monitored);
+        if (!items.length) return;
+        window.portMonitoring.open({
+            items,
+            monitored,
+            onDone: () => { items.forEach(i => selected.delete(selKey(i.device_id, i.if_index))); fetchInterfaces(true); },
+        });
+    }
+
+    function wireBulk() {
+        const all = document.getElementById('ifSelectAll');
+        if (!all) return;
+        all.addEventListener('change', () => {
+            document.querySelectorAll('#ifTableBody .if-sel').forEach(cb => { cb.checked = all.checked; toggleSelected(cb, all.checked); });
+            syncSelectionUi();
+        });
+        document.getElementById('ifBulkOff').addEventListener('click', () => bulkApply(false));
+        document.getElementById('ifBulkOn').addEventListener('click', () => bulkApply(true));
+        document.getElementById('ifBulkClear').addEventListener('click', () => {
+            selected.clear();
+            document.querySelectorAll('#ifTableBody .if-sel').forEach(cb => { cb.checked = false; cb.closest('tr')?.classList.remove('if-row-selected'); });
+            syncSelectionUi();
         });
     }
 
@@ -286,7 +376,7 @@
 
     function renderError(msg) {
         const tbody = document.getElementById('ifTableBody');
-        tbody.innerHTML = `<tr><td colspan="10" class="if-empty if-empty-err"><i class="fas fa-triangle-exclamation"></i> ${escapeHtml(msg)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${colCount()}" class="if-empty if-empty-err"><i class="fas fa-triangle-exclamation"></i> ${escapeHtml(msg)}</td></tr>`;
     }
 
     function pageWindow(current, last) {
