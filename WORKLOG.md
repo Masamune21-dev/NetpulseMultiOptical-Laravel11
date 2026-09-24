@@ -4,6 +4,18 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Docs: Screenshot README (Data Demo)
+
+- **Created**: bagian **Screenshots** di `README.md` — dashboard web (`readme-dashboard.webp`) dan galeri
+  5 layar aplikasi Android (`mobile-{login,beranda,monitoring,interface,peta}.webp`), dikompres ke WebP
+  (±5 MB → ±570 KB).
+- **Notes — hanya data demo**: screenshot pertama yang diserahkan memuat IP manajemen, nama switch,
+  nama mitra/pelanggan, dan lokasi node asli di peta — tidak di-commit (repo publik) dan dipindah dari
+  `public/` ke luar webroot (tadinya bisa diakses lewat URL). Semua screenshot di README diambil dengan
+  akun **viewer** sementara, yang selalu menerima `ViewerDummyData` (perangkat `*-DEMO`, IP `10.10.x`,
+  node peta rekaan); diverifikasi lewat API tanpa IP/nama asli. Akun demo beserta token API & token push
+  sudah dihapus (sisa 0).
+
 ## 2026-09-24 — Fixed: Port "Hantu" yang Tak Lagi Dilaporkan Perangkat
 
 - **Fixed**: satu switch 4 port SFP (CRS305-1G-4S+) tampil dengan 5 port SFP — `sfp-sfpplus8`

@@ -25,6 +25,27 @@ NetPulse polls your switches and routers over SNMP every minute, records the RX/
 every SFP, and tells you **before** a degrading link turns into an outage — while also giving
 you the uptime numbers you need for SLA reports.
 
+## Screenshots
+
+> All screenshots use the built-in **demo data** that NetPulse serves to `viewer` accounts —
+> no real devices, addresses or customer names.
+
+**Web dashboard**
+
+![NetPulse web dashboard with demo data](public/assets/img/readme-dashboard.webp)
+
+**Android app**
+
+<p align="center">
+  <img src="public/assets/img/mobile-login.webp" width="160" alt="Mobile app: sign in">
+  <img src="public/assets/img/mobile-beranda.webp" width="160" alt="Mobile app: home with network health and lowest RX ports">
+  <img src="public/assets/img/mobile-monitoring.webp" width="160" alt="Mobile app: optical monitoring chart per SFP">
+  <img src="public/assets/img/mobile-interface.webp" width="160" alt="Mobile app: interface list with RX bars and status">
+  <img src="public/assets/img/mobile-peta.webp" width="160" alt="Mobile app: network map">
+</p>
+
+<p align="center"><sub>Sign in · Home · Monitoring · Interfaces · Map</sub></p>
+
 ## Features
 
 | | |
