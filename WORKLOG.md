@@ -15,6 +15,8 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
   disamakan. Versi yang usang (Laravel 11, app 2.0.0+2) dan perintah `php artisan test` polos dihapus.
 - **Changed**: `public/assets/img/loginpage.png` diganti tangkapan layar halaman login yang sekarang
   (halaman publik, tanpa data). Tidak ada host internal, IP, atau kredensial di README.
+- **Changed**: `CLAUDE.md` — stack kini Laravel 12 + Blade/vanilla JS (dulu tertulis Laravel 11 + Bootstrap),
+  peringatan bahwa repo publik, dan lokasi kunci rilis APK (`/root/.kv-keystores/`, di luar repo).
 
 ## 2026-09-24 — Tindak Lanjut Keamanan: CSP Ditegakkan, Verifikasi Browser, Cache Root
 

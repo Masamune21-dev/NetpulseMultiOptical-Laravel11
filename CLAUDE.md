@@ -1,6 +1,6 @@
 # CLAUDE.md — Netpulse Multi Optical
 
-Netpulse Multi Optical — Sistem monitoring link fiber optik, DDM power optical, dan status antarmuka perangkat ISP (Laravel 11 + Bootstrap/Vite + Flutter Mobile). Dimiliki oleh PT BERKAH MEDIA KUSUMA VISION (BMKV). Domain: `netpulse.kusumavision.net`.
+Netpulse Multi Optical — Sistem monitoring link fiber optik, DDM power optical, dan status antarmuka perangkat ISP (Laravel 12 + Blade/vanilla JS + Flutter Mobile; repo GitHub PUBLIK sejak 24 Sep 2026 — jangan commit IP internal, kredensial, atau data pelanggan). Dimiliki oleh PT BERKAH MEDIA KUSUMA VISION (BMKV). Domain: `netpulse.kusumavision.net`.
 
 User berkomunikasi dalam bahasa Indonesia — jawab dalam bahasa Indonesia (bilingual saat membahas istilah teknis).
 
@@ -20,7 +20,7 @@ bash bin/build-apk.sh                # Kompilasi Flutter APK (hasil: public/down
 - **Runtime**: PHP 8.3-FPM (`/run/php/php8.3-fpm.sock`).
 - **Nginx & SSL**: `/etc/nginx/sites-available/netpulse.kusumavision.net` memakai wildcard SSL `/etc/nginx/ssl/kusumavision.wildcard.pem`.
 - **Scheduler**: Cron di `/etc/cron.d/netpulse` (`* * * * * www-data php .../artisan schedule:run`). Poller men-dispatch paralel 23 router/switch via SNMP.
-- **Mobile Toolchain**: Flutter 3.44 di `/opt/flutter` + Android SDK di `/opt/android-sdk`. Keystore/google-services diletakkan di `mobile/android/app/google-services.json`.
+- **Mobile Toolchain**: Flutter 3.44 di `/opt/flutter` + Android SDK di `/opt/android-sdk`. `google-services.json` di `mobile/android/app/` (di-.gitignore). Kunci rilis APK di `/root/.kv-keystores/` (di luar repo, ikut backup GPG `kv-backup-all.sh`); `bin/build-apk.sh` menolak build tanpa kunci itu.
 
 ## Aturan Baku AI Agent
 
