@@ -4,6 +4,18 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Docs: README ditulis ulang dalam bahasa Inggris
+
+- **Changed**: `README.md` ditulis ulang dalam bahasa Inggris untuk repo publik — ringkasan, tabel fitur
+  (monitoring optik, status interface, deteksi degradasi, SLA + ekspor CSV/PDF, peta, alert, discovery,
+  peran, aplikasi Android), stack, instalasi, tabel jadwal scheduler (`poll:interfaces`, `stats:rollup`,
+  `stats:prune`, `optical:degradation`), push, build APK dengan kunci sendiri, tabel API v1, test aman,
+  bagian keamanan + pelaporan kerentanan lewat GitHub Security Advisories, tata letak projek.
+- **Fixed**: README lama menyebut lisensi **MIT**, padahal `LICENSE` berisi **CC BY-NC 4.0** — kini
+  disamakan. Versi yang usang (Laravel 11, app 2.0.0+2) dan perintah `php artisan test` polos dihapus.
+- **Changed**: `public/assets/img/loginpage.png` diganti tangkapan layar halaman login yang sekarang
+  (halaman publik, tanpa data). Tidak ada host internal, IP, atau kredensial di README.
+
 ## 2026-09-24 — Tindak Lanjut Keamanan: CSP Ditegakkan, Verifikasi Browser, Cache Root
 
 - **Changed (server, di luar repo)**: CSP di `snippets/netpulse-headers.conf` diubah dari
