@@ -4,6 +4,24 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-24 — Changed: upgrade Laravel 11.56 → 12.69 (cabang 11 sudah EOL)
+
+- **Changed**: `composer.json` — `laravel/framework` ^12.0 (terpasang 12.69.2), `laravel/tinker` ^2.10.1,
+  `laravel/pail` ^1.2.2, `nunomaduro/collision` ^8.6, `phpunit/phpunit` ^11.5.3. `composer audit` kini
+  bersih; dua advisori framework 11 (CRLF aturan `email`, path confusion URL bertanda tangan) gugur.
+- **Notes — tidak ada perubahan kode aplikasi**: Carbon sudah 3.x sejak Laravel 11, disk `local` sudah
+  eksplisit ke `storage/app/private`, tidak ada `HasUuids`, validasi gambar push memakai daftar ekstensi
+  sendiri, dan `Schema::hasTable/getColumnListing` tidak terdampak di MariaDB satu skema.
+- **Notes — cara menerapkan**: dilatih dulu di git worktree terpisah (sqlite, tanpa `.env` produksi) —
+  `bash scripts/test.sh` 14 lulus, 78 rute, `php -l` bersih — baru di-fast-forward ke checkout produksi,
+  `composer install`, lalu `config:cache` + `route:cache` + `view:cache` dan kepemilikan
+  `storage`/`bootstrap/cache` dikembalikan ke `www-data`. Cadangan untuk rollback di `/root/`:
+  `netpulse-composer.{json,lock}.bak-l11-20260924` dan `netpulse-vendor-backup-l11-20260924.tgz`.
+- **Verifikasi**: `/login` & `/healthz` 200; `php artisan about` → 12.69.2, config/rute/view CACHED;
+  `schedule:list` utuh dan detak `netpulse-schedule` terus berjalan setelah upgrade; tidak ada galat baru
+  di `laravel.log`; 8 halaman ber-login × desktop/HP dibuka dengan akun uji sementara → semua 200,
+  0 galat konsol, 0 pelanggaran CSP (sama dengan sebelum upgrade).
+
 ## 2026-09-24 — Created: Netpulse Mobile 2.1.2+8 ditandatangani kunci rilis sendiri
 
 - **Changed (penandatanganan)**: build rilis dulu memakai **kunci debug** server ini
