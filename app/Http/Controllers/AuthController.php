@@ -55,6 +55,7 @@ class AuthController extends Controller
             'full_name' => $user->full_name,
             'role' => $user->role,
         ]);
+        $request->session()->put('auth.pw', ['uid' => (int) $user->id, 'fp' => \App\Support\UserState::fingerprint((string) $user->password)]);
 
         $this->writeSecurityLog('LOGIN_SUCCESS', $user->username, $ip, 'OK');
 

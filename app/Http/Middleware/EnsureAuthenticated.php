@@ -21,7 +21,22 @@ class EnsureAuthenticated
         $user = (array) $session->get('auth.user', []);
         $state = UserState::fresh((int) ($user['id'] ?? 0));
 
-        if ($state === null || !$state['is_active']) {
+        // Sidik sandi terikat id user pemilik sesi: [uid, fp].
+        $userId = (int) ($user['id'] ?? 0);
+        $sessionPw = (array) $session->get('auth.pw', []);
+        if ($state !== null && (int) ($sessionPw['uid'] ?? 0) !== $userId) {
+            // Sesi lama sebelum sidik ini ada — inisialisasi tanpa menendang.
+            $sessionPw = ['uid' => $userId, 'fp' => $state['pw'] ?? ''];
+            $session->put('auth.pw', $sessionPw);
+        }
+
+        // Sandi direset admin (mis. akun bocor) → sesi web lama ikut gugur, bukan
+        // bertahan 120 menit bergulir lewat polling dashboard. `pw` bisa absen di
+        // entri cache UserState lama (≤60 dtk setelah pembaruan) — lewati.
+        $passwordChanged = $state !== null && isset($state['pw'])
+            && !hash_equals($state['pw'], (string) ($sessionPw['fp'] ?? ''));
+
+        if ($state === null || !$state['is_active'] || $passwordChanged) {
             $session->invalidate();
             $session->regenerateToken();
 

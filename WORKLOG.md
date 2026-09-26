@@ -4,6 +4,15 @@ Sistem pemantauan status antarmuka fiber optik, redaman/DDM optical power, dan S
 
 ---
 
+## 2026-09-26 — Fixed: Reset Sandi oleh Admin Memutus Sesi Web
+
+- **Fixed**: sesi web tetap hidup (sliding 120 menit lewat polling dashboard) setelah admin mereset sandi
+  user. `UserState` kini membawa sidik sandi (`pw`), sesi menyimpan `auth.pw = [uid, fp]` saat login, dan
+  `EnsureAuthenticated` memutus sesi yang sidiknya berbeda (entri cache lama tanpa `pw` dilewati; admin yang
+  mengganti sandinya sendiri tidak tertendang).
+- **Notes**: server — `bootstrap/cache` & `storage` kini `o-rwx` (config cache & 148 berkas sesi dulu bisa
+  dibaca user lain). Test `SecurityHardeningTest` +1; suite 53 lulus.
+
 ## 2026-09-24 — Created: Pilih Banyak Port di Halaman Interfaces
 
 - **Created**: kotak centang per baris + "pilih semua di halaman ini" (hanya admin) di `/interfaces`.

@@ -13,7 +13,7 @@ final class UserState
 {
     private const TTL = 60;
 
-    /** @return array{role:string,is_active:bool}|null null bila user tidak ada. */
+    /** @return array{role:string,is_active:bool,pw:string}|null null bila user tidak ada. */
     public static function fresh(int $userId): ?array
     {
         if ($userId <= 0) {
@@ -21,7 +21,7 @@ final class UserState
         }
 
         return Cache::remember(self::key($userId), self::TTL, function () use ($userId) {
-            $row = DB::table('users')->select(['role', 'is_active'])->where('id', $userId)->first();
+            $row = DB::table('users')->select(['role', 'is_active', 'password'])->where('id', $userId)->first();
             if (!$row) {
                 return null;
             }
@@ -29,8 +29,16 @@ final class UserState
             return [
                 'role' => (string) $row->role,
                 'is_active' => (int) $row->is_active === 1,
+                // Sidik sandi (bukan hash-nya) — sesi yang login dengan sandi lama
+                // gugur begitu admin mereset sandinya.
+                'pw' => self::fingerprint((string) $row->password),
             ];
         });
+    }
+
+    public static function fingerprint(string $passwordHash): string
+    {
+        return hash('sha256', $passwordHash);
     }
 
     public static function forget(int $userId): void

@@ -111,6 +111,11 @@ class UsersApiController extends Controller
         $target->save();
         UserState::forget((int) $target->id);
 
+        // Admin mengganti sandinya sendiri: sesi yang sedang dipakai tidak ikut gugur.
+        if (isset($update['password']) && (int) ($request->session()->get('auth.user')['id'] ?? 0) === (int) $target->id) {
+            $request->session()->put('auth.pw', ['uid' => (int) $target->id, 'fp' => UserState::fingerprint((string) $target->password)]);
+        }
+
         if ($revoke) {
             $this->revokeApiAccess($target);
         }

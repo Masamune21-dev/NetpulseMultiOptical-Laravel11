@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use App\Support\UserState;
 use Tests\TestCase;
 
 /**
@@ -159,6 +160,25 @@ class SecurityHardeningTest extends TestCase
 
         $this->assertSame(0, $target->tokens()->count());
         $this->assertDatabaseMissing('device_tokens', ['token' => 'fcm-target']);
+    }
+
+    public function test_reset_sandi_oleh_admin_memutus_sesi_web_user_itu(): void
+    {
+        $target = $this->makeUser('technician');
+        $session = [
+            'auth.logged_in' => true,
+            'auth.user' => ['id' => $target->id, 'username' => $target->username, 'full_name' => $target->full_name, 'role' => 'technician'],
+            'auth.pw' => ['uid' => $target->id, 'fp' => UserState::fingerprint((string) $target->password)],
+        ];
+
+        // Masih login dengan sandi lama → dilayani.
+        $this->withSession($session)->getJson('/api/users')->assertOk();
+
+        // Admin mereset sandinya (mis. akun bocor).
+        $target->forceFill(['password' => Hash::make('sandi-baru-yang-panjang')])->save();
+        UserState::forget((int) $target->id);
+
+        $this->withSession($session)->getJson('/api/users')->assertStatus(401);
     }
 
     public function test_ubah_nama_saja_tidak_mencabut_token(): void
